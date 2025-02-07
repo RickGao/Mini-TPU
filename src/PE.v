@@ -1,41 +1,52 @@
-`define DATA_WIDTH 8  // Define bit-width for input A and B
+`default_nettype none
+`timescale 1ns/1ps
+
+// Define bit-widths according to your system requirements
+`define DATA_WIDTH 8
 `define ACC_WIDTH 16
 
+module pe_improved (
+    input  wire                   clk,
+    input  wire                   reset,        // Synchronous active-high reset
+    input  wire                   load_weight,  // Load a new weight when asserted
+    input  wire                   valid,        // Indicates valid input data for calculation
+    input  wire [`DATA_WIDTH-1:0] a_in,         // Input data from the left
+    input  wire [`DATA_WIDTH-1:0] weight,       // External weight input to be stored
+    input  wire [`ACC_WIDTH-1:0]  acc_in,       // Accumulated sum input from above
 
-module pe (
-    input  wire clk,
-    input  wire rst_n,
-    input  wire [`DATA_WIDTH-1:0] a_in,   // from the left
-    input  wire [`DATA_WIDTH-1:0] b_in,   // from the top
-    input  wire [`ACC_WIDTH-1:0]  c_in,   // partial sum from above
-    output wire [`DATA_WIDTH-1:0] a_out,  // to the right
-    output wire [`DATA_WIDTH-1:0] b_out,  // to the bottom
-    output wire [`ACC_WIDTH-1:0]  c_out   // updated partial sum
+    output reg  [`DATA_WIDTH-1:0] a_out,        // Output data to the right
+    output reg  [`ACC_WIDTH-1:0]  acc_out       // Accumulated sum output to the next stage below
 );
 
-    reg [`DATA_WIDTH-1:0] a_reg, b_reg;
-    reg [`ACC_WIDTH-1:0] c_reg;
+    // Register to hold the stationary weight inside the PE
+    reg [`DATA_WIDTH-1:0] weight_reg;
 
-    always @(posedge clk or negedge rst_n) begin
-        if (!rst_n) begin
-            a_reg <= 0;
-            b_reg <= 0;
-            c_reg <= 0;
+    // Synchronous block with synchronous active-high reset
+    always @(posedge clk or posedge reset) begin
+        if (reset) begin
+            // Reset all internal registers to 0
+            a_out      <= {`DATA_WIDTH{1'b0}};
+            acc_out    <= {`ACC_WIDTH{1'b0}};
+            weight_reg <= {`DATA_WIDTH{1'b0}};
         end 
         else begin
-            // Pipeline the A and B values each cycle
-            a_reg <= a_in;
-            b_reg <= b_in;
+            // Load new weight when load_weight is asserted
+            if (load_weight) begin
+                weight_reg <= weight;
+            end
 
-            // Multiply-Accumulate using old latched A/B or direct inputs,
-            // depending on your pipeline design:
-            c_reg <= c_in + (a_in * b_in);  
-            // or c_reg <= c_in + (a_reg * b_reg);
+            // Perform MAC operation only when valid is high
+            if (valid) begin
+                // Multiply a_in with the stored weight and add to acc_in
+                // Note: a_in * weight_reg may require 16 bits to avoid overflow if DATA_WIDTH=8
+                acc_out <= acc_in + (a_in * weight_reg);
+
+                // Pass a_in through to a_out so the data can propagate to the next PE horizontally
+                a_out <= a_in;
+            end
+            // If valid is low, a_out and acc_out remain unchanged in this design.
+            // Adjust if your system requires different behavior when valid is 0.
         end
     end
-
-    assign a_out = a_reg;  
-    assign b_out = b_reg;  
-    assign c_out = c_reg;
 
 endmodule
