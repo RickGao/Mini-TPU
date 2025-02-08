@@ -11,7 +11,6 @@ module pe (
     input  wire [`DATA_WIDTH-1:0] b_in,     // Input B from the top
     output wire [`DATA_WIDTH-1:0] a_out,    // Pass A to the right
     output wire [`DATA_WIDTH-1:0] b_out,    // Pass B to the bottom
-    // input  wire [`ACC_WIDTH-1:0]  c_in,     // Accumulated input
     output wire [`ACC_WIDTH-1:0]  c_out     // Accumulated result
 );
 
