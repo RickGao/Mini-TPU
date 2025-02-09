@@ -130,9 +130,8 @@ class monitor;
                 transaction trans = new();
                 trans.a_in = vif.a_in;
                 trans.b_in = vif.b_in;
-                trans.c_out = vif.c_out;
                 trans.we = vif.we;
-                
+                trans.c_out = vif.c_out;
                 mon2sbx.put(trans);
            
             end
@@ -141,30 +140,43 @@ class monitor;
     endtask
 endclass     
 
-
+//scoreboard class
 class scoreboard;
     mailbox mon2sbx;
-    bit[`ACC_WIDTH-1:0] expected_c;
-    integer counter = 0;
+    bit[`ACC_WIDTH-1:0] next_expected_c;
+    bit[`ACC_WIDTH-1:0] next2_expected_c;
+    int 
+
+    int transaction_count;
     
     function new(mailbox mon2sbx);
         this.mon2sbx = mon2sbx;
-        expected_c   = 0;
+        next_expected_c   = 0;
+        transaction_count = 0;
    endfunction
    
     task run;
         forever begin
         transaction trans;
         mon2sbx.get(trans);
-        expected_c = expected_c + trans.a_in * trans.b_in;
-        $display("input: a_in: %0d, b_in: %0d", trans.a_in, trans.b_in);
-        if (trans.c_out !== expected_c) begin
-            $display("Error: Expected c_out = %0d, Actual c_out = %0d", expected_c, trans.c_out);
-            counter ++;
-        end else begin
-            $display("Output Match: Expected c_out = %0d, Actual c_out = %0d", expected_c, trans.c_out);
+        if (transaction_count > 0) begin
+                // Not the very first transaction
+                if (trans.c_out !== next_expected_c) begin
+                    $display("ERROR at time %0t: expected_c=%0d, got c_out=%0d",
+                              $time, next_expected_c, trans.c_out);
+                end
+                else begin
+                    $display("MATCH at time %0t: expected_c=%0d, got c_out=%0d",
+                              $time, next_expected_c, trans.c_out);
+                end
+            end
+
+            // 2) Now update the scoreboard's next_expected_c
+            //    so it will be used for the *next* transaction's compare
+            next_expected_c = next_expected_c + trans.a_in * trans.b_in;
+
+            transaction_count++;
         end
-    end
     endtask
 endclass
 
