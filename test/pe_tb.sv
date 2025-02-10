@@ -143,39 +143,39 @@ endclass
 //scoreboard class
 class scoreboard;
     mailbox mon2sbx;
-    bit[`ACC_WIDTH-1:0] next_expected_c;
-    bit[`ACC_WIDTH-1:0] next2_expected_c;
-    int 
+    bit [`ACC_WIDTH-1:0] expected_c;
+    bit [`ACC_WIDTH-1:0] queue1[$];  // Declare as a queue
 
     int transaction_count;
     
     function new(mailbox mon2sbx);
         this.mon2sbx = mon2sbx;
-        next_expected_c   = 0;
-        transaction_count = 0;
-   endfunction
+        expected_c   = 0;
+        queue1 = {0, 0};  // Initialize queue with two zeros in the constructor
+    endfunction
    
     task run;
         forever begin
-        transaction trans;
-        mon2sbx.get(trans);
-        if (transaction_count > 0) begin
-                // Not the very first transaction
-                if (trans.c_out !== next_expected_c) begin
-                    $display("ERROR at time %0t: expected_c=%0d, got c_out=%0d",
-                              $time, next_expected_c, trans.c_out);
-                end
-                else begin
-                    $display("MATCH at time %0t: expected_c=%0d, got c_out=%0d",
-                              $time, next_expected_c, trans.c_out);
-                end
+            transaction trans;
+            bit [`ACC_WIDTH-1:0] popped_c;
+
+            mon2sbx.get(trans);
+            expected_c = expected_c + trans.a_in * trans.b_in;
+            
+            queue1.push_back(expected_c);  // Add new expected value to the end
+            
+            popped_c = queue1.pop_front();  // Retrieve oldest expected value
+            
+            $display("Input at time %0t: a_in = %0d, b_in = %0d", $time, trans.a_in, trans.b_in);
+            
+            if (trans.c_out !== popped_c) begin
+                $display("ERROR at time %0t: expected_c=%0d, got c_out=%0d",
+                         $time, popped_c, trans.c_out);
             end
-
-            // 2) Now update the scoreboard's next_expected_c
-            //    so it will be used for the *next* transaction's compare
-            next_expected_c = next_expected_c + trans.a_in * trans.b_in;
-
-            transaction_count++;
+            else begin
+                $display("MATCH at time %0t: expected_c=%0d, got c_out=%0d",
+                         $time, popped_c, trans.c_out);
+            end
         end
     endtask
 endclass
