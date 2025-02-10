@@ -144,7 +144,9 @@ endclass
 class scoreboard;
     mailbox mon2sbx;
     bit [`ACC_WIDTH-1:0] expected_c;
-    bit [`ACC_WIDTH-1:0] queue1[$];  // Declare as a queue
+    bit [`ACC_WIDTH-1:0] queue1[$];  // queue for expected output, for delaying two cycle and waiting for actual output
+    bit [`DATA_WIDTH-1:0] queue2[$];  // Declare as a queue for input
+
 
     int transaction_count;
     
@@ -152,21 +154,30 @@ class scoreboard;
         this.mon2sbx = mon2sbx;
         expected_c   = 0;
         queue1 = {0, 0};  // Initialize queue with two zeros in the constructor
+        queue2 = {0, 0, 0, 0};  // Initialize queue with four zeros in the constructor
+
     endfunction
    
     task run;
         forever begin
             transaction trans;
             bit [`ACC_WIDTH-1:0] popped_c;
+            
+            bit [`DATA_WIDTH-1:0] input_a;
+            bit [`DATA_WIDTH-1:0] input_b;
 
             mon2sbx.get(trans);
             expected_c = expected_c + trans.a_in * trans.b_in;
             
             queue1.push_back(expected_c);  // Add new expected value to the end
+            queue2.push_back(trans.a_in);
+            queue2.push_back(trans.b_in);
             
             popped_c = queue1.pop_front();  // Retrieve oldest expected value
+            input_a = queue2.pop_front();
+            input_b = queue2.pop_front();
             
-            $display("Input at time %0t: a_in = %0d, b_in = %0d", $time, trans.a_in, trans.b_in);
+            $display("Delayed Input at time %0t: a_in = %0d, b_in = %0d", $time, input_a, input_b);
             
             if (trans.c_out !== popped_c) begin
                 $display("ERROR at time %0t: expected_c=%0d, got c_out=%0d",
