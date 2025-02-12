@@ -26,7 +26,7 @@ module pe (
         end else if (we) begin  // Update only when we = 1
             a_reg <= a_in;  // Store the input A value
             b_reg <= b_in;  // Store the input B value
-            c_reg <= c_reg + a_reg * b_reg;  // Perform multiply-accumulate operation
+            c_reg <= c_reg + a_in * b_in;  // Perform multiply-accumulate operation
         end
     end
 
