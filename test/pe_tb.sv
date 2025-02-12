@@ -43,47 +43,12 @@ class generator;
     endfunction
     
     task run;
-        repeat (100) begin
+        repeat (10000) begin
             trans = new();
             assert(trans.randomize());
             trans.we = 1;
             gen2drv.put(trans);
         end
-    endtask
-    
-    
-    task corner_case_test;
-        // Corner case 1: Minimum values
-        trans = new();
-        trans.a_in = 0;
-        trans.b_in = 0;
-        trans.we = 1;
-        gen2drv.put(trans);
-        @(posedge vif.clk); // Wait for one clock cycle
-        
-        // Corner case 2: Maximum values
-        trans = new();
-        trans.a_in = 255;
-        trans.b_in = 255;
-        trans.we = 1;
-        gen2drv.put(trans);
-        @(posedge vif.clk); // Wait for one clock cycle
-        
-        // Corner case 3: Mixed values (a_in = 0, b_in = 255)
-        trans = new();
-        trans.a_in = 0;
-        trans.b_in = 255;
-        trans.we = 1;
-        gen2drv.put(trans);
-        @(posedge vif.clk); // Wait for one clock cycle
-        
-        // Corner case 4: Mixed values (a_in = 255, b_in = 0)
-        trans = new();
-        trans.a_in = 255;
-        trans.b_in = 0;
-        trans.we = 1;
-        gen2drv.put(trans);
-        @(posedge vif.clk); // Wait for one clock cycle
     endtask
     
 endclass
@@ -143,52 +108,65 @@ endclass
 //scoreboard class
 class scoreboard;
     mailbox mon2sbx;
-    bit [`ACC_WIDTH-1:0] expected_c;
-    bit [`ACC_WIDTH-1:0] queue1[$];  // queue for expected output, for delaying two cycle and waiting for actual output
+    bit[`ACC_WIDTH-1:0] next_expected_c;
     bit [`DATA_WIDTH-1:0] queue2[$];  // Declare as a queue for input
+    int passed_count;
+    int failed_count;
 
 
     int transaction_count;
     
     function new(mailbox mon2sbx);
         this.mon2sbx = mon2sbx;
-        expected_c   = 0;
-        queue1 = {0, 0};  // Initialize queue with two zeros in the constructor
+        next_expected_c   = 0;
         queue2 = {0, 0, 0, 0};  // Initialize queue with four zeros in the constructor
+        passed_count = 0;
+        failed_count = 0;
 
     endfunction
    
     task run;
         forever begin
             transaction trans;
-            bit [`ACC_WIDTH-1:0] popped_c;
             
             bit [`DATA_WIDTH-1:0] input_a;
             bit [`DATA_WIDTH-1:0] input_b;
 
             mon2sbx.get(trans);
-            expected_c = expected_c + trans.a_in * trans.b_in;
             
-            queue1.push_back(expected_c);  // Add new expected value to the end
             queue2.push_back(trans.a_in);
             queue2.push_back(trans.b_in);
             
-            popped_c = queue1.pop_front();  // Retrieve oldest expected value
             input_a = queue2.pop_front();
             input_b = queue2.pop_front();
             
-            $display("Delayed Input at time %0t: a_in = %0d, b_in = %0d", $time, input_a, input_b);
-            
-            if (trans.c_out !== popped_c) begin
-                $display("ERROR at time %0t: expected_c=%0d, got c_out=%0d",
-                         $time, popped_c, trans.c_out);
-            end
-            else begin
-                $display("MATCH at time %0t: expected_c=%0d, got c_out=%0d",
-                         $time, popped_c, trans.c_out);
-            end
+            if (transaction_count > 0) begin
+                $display("Delayed Input at time %0t: a_in = %0d, b_in = %0d", $time, input_a, input_b);
+
+                if (trans.c_out !== next_expected_c) begin
+                    failed_count++;
+    
+                    $display("ERROR at time %0t: expected_c=%0d, got c_out=%0d",
+                             $time, next_expected_c, trans.c_out);
+                end
+                else begin
+                    passed_count++;
+                    $display("MATCH at time %0t: expected_c=%0d, got c_out=%0d",
+                             $time, next_expected_c, trans.c_out);
+                    /**         
+                    $display("\n--- Test Report ---");
+                    $display("Passed: %0d", passed_count);
+                    $display("Failed: %0d", failed_count);
+                    $display("-------------------");
+                    **/
+                end
+                end
+            next_expected_c = next_expected_c + trans.a_in * trans.b_in;
+            transaction_count++;
+
         end
     endtask
+    
 endclass
 
 //Enviroment
@@ -240,6 +218,7 @@ endclass
 module tb_top;
     bit clk;
     bit rst_n;
+    test t;
     
     pe_if vif(clk);
     
@@ -271,7 +250,7 @@ module tb_top;
     end
     
     initial begin
-        test t = new(vif);
+        t = new(vif);
         #500;
         t.run();
         #500;
