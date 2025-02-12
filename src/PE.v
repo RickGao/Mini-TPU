@@ -1,7 +1,7 @@
 // Processing Element of Systolic Array
 
 `define DATA_WIDTH 8  // Define bit-width for input A and B
-`define ACC_WIDTH 16  // Define bit-width for accumulation (C)
+`define ACC_WIDTH 16  // Define bit-width for accumulation C
 
 module pe (
     input  wire clk,
