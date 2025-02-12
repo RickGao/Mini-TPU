@@ -33,6 +33,7 @@ module pe (
     // Pass values
     assign a_out = a_reg;
     assign b_out = b_reg;
+    // Output
     assign c_out = c_reg;
 
 endmodule
