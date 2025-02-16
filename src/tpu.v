@@ -10,18 +10,42 @@ module tt_um_tpu (
     output wire [7:0] uo_out,   // Dedicated outputs
     input  wire [7:0] uio_in,   // IOs: Input path
     output wire [7:0] uio_out,  // IOs: Output path
-    output wire [7:0] uio_oe,   // IOs: Enable path (active high: 0=input, 1=output)
-    input  wire       ena,      // always 1 when the design is powered, so you can ignore it
+    output wire [7:0] uio_oe,   // IOs: Enable path (active high)
+    input  wire       ena,      // always 1 when the design is powered
     input  wire       clk,      // clock
     input  wire       rst_n     // reset_n - low to reset
 );
 
-  // All output pins must be assigned. If not used, assign to 0.
-  assign uo_out  = ui_in + uio_in;  // Example: ou_out is the sum of ui_in and uio_in
-  assign uio_out = 0;
-  assign uio_oe  = 0;
+    //-----------------------------------------------------
+    // 1) Instantiate your TPU top-level (to be written)
+    //-----------------------------------------------------
+    wire [7:0] tpu_data_out;
+    wire [7:0] tpu_uio_out;
+    wire [7:0] tpu_uio_oe;
 
-  // List all unused inputs to prevent warnings
-  wire _unused = &{ena, clk, rst_n, 1'b0};
+    tpu_top tpu_inst (
+        // Example connections – you will refine these 
+        // based on your actual tpu_top interface
+        .clk        (clk),
+        .rst_n      (rst_n),
+        .inp_ui     (ui_in),
+        .inp_uio    (uio_in),
+
+        .out_ui     (tpu_data_out),
+        .out_uio    (tpu_uio_out),
+        .oe_uio     (tpu_uio_oe)
+    );
+
+    //-----------------------------------------------------
+    // 2) Tie outputs from TPU to the TT pads
+    //-----------------------------------------------------
+    assign uo_out  = tpu_data_out;  // Goes to dedicated output pins
+    assign uio_out = tpu_uio_out;   // Goes to the in/out pins
+    assign uio_oe  = tpu_uio_oe;    // Enable signal for in/out pins
+
+    //-----------------------------------------------------
+    // 3) Tie off any unused signals to avoid warnings
+    //-----------------------------------------------------
+    wire _unused = &{ena, 1'b0};
 
 endmodule
