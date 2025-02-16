@@ -2,39 +2,42 @@
 `timescale 1ns/1ns
 
 module output_sram #(
-    parameter DATA_WIDTH = 16,               // Bit-width for each stored result
-    parameter DEPTH      = 16,               // Number of storage locations (e.g., for 16 outputs)
-    parameter ADDR_WIDTH = $clog2(DEPTH)       // Address width calculated from DEPTH
+    parameter DATA_WIDTH = 16,                // Bit-width per stored result
+    parameter DEPTH      = 16,                // # of storage locations
+    parameter ADDR_WIDTH = $clog2(DEPTH)
 )(
     input  wire                    clk,
-    input  wire                    rst_n,
-    // Write port: writes data from the systolic array
-    input  wire                    we,       // Write enable signal
-    input  wire [ADDR_WIDTH-1:0]   waddr,    // Write address (provided by control logic)
-    input  wire [DATA_WIDTH-1:0]   wdata,    // Data to write (e.g., one PE's c_out)
-    // Read port: reads out stored data to the external interface
-    input  wire                    re,       // Read enable signal
-    input  wire [ADDR_WIDTH-1:0]   raddr,    // Read address (controlled by an output controller)
-    output reg  [DATA_WIDTH-1:0]   rdata     // Data read out
+    input  wire                    rst_n,     // Active-low reset
+    // Write port (from systolic array or aggregator)
+    input  wire                    we,        // Write enable
+    input  wire [ADDR_WIDTH-1:0]   waddr,     // Write address
+    input  wire [DATA_WIDTH-1:0]   wdata,     // Data to write
+    // Read port (to external interface)
+    input  wire                    re,        // Read enable
+    input  wire [ADDR_WIDTH-1:0]   raddr,     // Read address
+    output reg  [DATA_WIDTH-1:0]   rdata      // Data out
 );
 
-    // Declare the SRAM memory array
+    // Declare SRAM
     reg [DATA_WIDTH-1:0] mem [0:DEPTH-1];
 
-    // Write operation: synchronous write
+    // Write
     always @(posedge clk or negedge rst_n) begin
-        if (!rst_n)
-            ; // Optionally, initialize the memory array here if desired.
-        else if (we)
+        if (!rst_n) begin
+            // Optionally, clear memory or do nothing
+            // For gate-level or real ASIC, typically memory is not forced to zero.
+        end else if (we) begin
             mem[waddr] <= wdata;
+        end
     end
 
-    // Read operation: synchronous read
+    // Read
     always @(posedge clk or negedge rst_n) begin
-        if (!rst_n)
+        if (!rst_n) begin
             rdata <= {DATA_WIDTH{1'b0}};
-        else if (re)
+        end else if (re) begin
             rdata <= mem[raddr];
+        end
     end
 
 endmodule
