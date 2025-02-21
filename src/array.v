@@ -1,5 +1,6 @@
-`default_nettype none
-`timescale 1ns/1ns
+`define DATA_WIDTH 8  // Define bit-width for input A and B
+`define ACC_WIDTH 16  // Define bit-width for accumulation C
+
 
 module systolic_array_4x4 (
     input  wire                       clk,
@@ -15,7 +16,7 @@ module systolic_array_4x4 (
     input  wire [`DATA_WIDTH-1:0]     b_in1,
     input  wire [`DATA_WIDTH-1:0]     b_in2,
     input  wire [`DATA_WIDTH-1:0]     b_in3,
-    // Outputs: accumulated results from each PE (each 4×4 element)
+    // Outputs: accumulated results from each PE (each 4ï¿½4 element)
     output wire [`ACC_WIDTH-1:0]      c00, c01, c02, c03,
     output wire [`ACC_WIDTH-1:0]      c10, c11, c12, c13,
     output wire [`ACC_WIDTH-1:0]      c20, c21, c22, c23,
