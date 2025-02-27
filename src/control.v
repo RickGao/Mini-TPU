@@ -32,4 +32,15 @@ module control (
     reg status;
     
 
+    always @(negedge rst_n) begin
+        counter <= 0
+        status <= 0
+    end
+
+    always @(posedge clk) begin
+        if (status) begin
+            counter <= counter + 1b'1;
+        end
+    end
+
 endmodule
