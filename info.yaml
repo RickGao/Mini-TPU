@@ -22,7 +22,7 @@ project:
     - "memory.v"
     - "array.v"
     - "pe.v"
-    # - "tt_um_tpu.v"
+    - "tt_um_tpu.v"
 
 
 # The pinout of your project. Leave unused pins blank. DO NOT delete or add any pins.
