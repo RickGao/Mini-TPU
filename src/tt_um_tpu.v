@@ -3,7 +3,6 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-`default_nettype none
 
 module tt_um_tpu (
     input  wire [7:0] ui_in,    // Dedicated inputs
@@ -25,7 +24,7 @@ module tt_um_tpu (
    
     // Input and Output of TPU
     wire [15:0] instruction;
-    wire [7:0] result;
+    wire [7:0]  result;
 
     // Connect pin to instruction
     assign instruction [7:0]  = ui_in [7:0];    // Lower 8 bits are Input pins
@@ -36,7 +35,7 @@ module tt_um_tpu (
         .clk        (clk),
         .rst_n      (rst_n),
         .instruction(instruction),
-        .result        (result)
+        .result     (result)
     );
 
     assign uo_out  = result;
