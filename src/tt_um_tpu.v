@@ -23,7 +23,7 @@ module tt_um_tpu (
     wire [7:0] tpu_uio_out;
     wire [7:0] tpu_uio_oe;
 
-    tpu_top tpu_inst (
+    tpu tpu_inst (
         // Example connections – you will refine these 
         // based on your actual tpu_top interface
         .clk        (clk),
