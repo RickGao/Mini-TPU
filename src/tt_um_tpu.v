@@ -16,36 +16,30 @@ module tt_um_tpu (
     input  wire       rst_n     // reset_n - low to reset
 );
 
-    //-----------------------------------------------------
-    // 1) Instantiate your TPU top-level (to be written)
-    //-----------------------------------------------------
-    wire [7:0] tpu_data_out;
-    wire [7:0] tpu_uio_out;
-    wire [7:0] tpu_uio_oe;
+    // Bidirectional Pins All Input
+    assign uio_oe  = 8'b00000000;
+
+    // Assigned All Pins
+    assign uio_out = 0;
+    wire _unused = &{ena, 1'b0};
+   
+    // Input and Output of TPU
+    wire [15:0] instruction;
+    wire [7:0] result;
+
+    // Connect pin to instruction
+    assign instruction [7:0]  = ui_in [7:0];    // Lower 8 bits are Input pins
+    assign instruction [15:8] = uio_in [7:0];   // Upper 8 bits are IO pins
+
 
     tpu tpu_inst (
-        // Example connections – you will refine these 
-        // based on your actual tpu_top interface
         .clk        (clk),
         .rst_n      (rst_n),
-        .inp_ui     (ui_in),
-        .inp_uio    (uio_in),
-
-        .out_ui     (tpu_data_out),
-        .out_uio    (tpu_uio_out),
-        .oe_uio     (tpu_uio_oe)
+        .instruction(instruction),
+        .result        (result)
     );
 
-    //-----------------------------------------------------
-    // 2) Tie outputs from TPU to the TT pads
-    //-----------------------------------------------------
-    assign uo_out  = tpu_data_out;  // Goes to dedicated output pins
-    assign uio_out = tpu_uio_out;   // Goes to the in/out pins
-    assign uio_oe  = tpu_uio_oe;    // Enable signal for in/out pins
+    assign uo_out  = result;
 
-    //-----------------------------------------------------
-    // 3) Tie off any unused signals to avoid warnings
-    //-----------------------------------------------------
-    wire _unused = &{ena, 1'b0};
 
 endmodule

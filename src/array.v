@@ -2,7 +2,7 @@
 `define ACC_WIDTH 16  // Define bit-width for accumulation C
 
 
-module systolic_array_4x4 (
+module array (
     input  wire                       clk,
     input  wire                       rst_n,
     input  wire                       we,       // Write enable (when high, each PE performs its MAC)

@@ -13,6 +13,8 @@ This is a Mini TPU
 
 ## How to test
 
-Explain how to use your project
+Use instruction to control
 
 ## External hardware
+
+No external hardware
