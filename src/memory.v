@@ -4,13 +4,13 @@ module memory (
     input wire clk,
     input wire rst_n,
 
-    input wire write_enable,            // Write enable signal
-    input wire [1:0] write_line,        // Column for writing
-    input wire [1:0] write_elem,        // Row for writing
+    input wire write_enable,                // Write enable signal
+    input wire [1:0] write_line,            // Column for writing
+    input wire [1:0] write_elem,            // Row for writing
     input wire [`DATA_WIDTH-1:0] data_in,   // Data input for writing
 
-    input wire [3:0] read_enable,       // Each bit controls whether a column outputs data
-    input wire [1:0] read_elem [3:0],         // 4x2-bit, selects which row each column reads from
+    input wire [3:0] read_enable,           // Each bit controls whether a column outputs data
+    input wire [1:0] read_elem [3:0],       // 4x2-bit, selects which row each column reads from
     output wire [`DATA_WIDTH-1:0] data_out [3:0]  // 4-column output, each with DATA_WIDTH-bit width
 );
 
