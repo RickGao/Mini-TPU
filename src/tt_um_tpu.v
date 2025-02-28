@@ -16,7 +16,7 @@ module tt_um_tpu (
 );
 
     // Bidirectional Pins All Input
-    assign uio_oe  = 8'b00000000;
+    assign uio_oe[7:0]  = 8'b00000000;
 
     // Assigned All Pins
     assign uio_out = 0;

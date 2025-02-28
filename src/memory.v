@@ -36,14 +36,10 @@ module memory (
     end
 
     // Asynchronous read
-    always @(*) begin
-        for (line = 0; line < 4; line = line + 1) begin
-            if (read_enable[line]) begin
-                data_out[i] = mem[line][read_elem[line]];  // Select row based on read_elem
-            end else begin
-                data_out[i] = {`DATA_WIDTH{1'b0}};  // Output 0 if read_enable is 0
-            end
-        end
-    end
+    // Assign outputs based on read_enable and read_elem values
+    assign data_out[0] = read_enable[0] ? mem[0][read_elem[0]] : {`DATA_WIDTH{1'b0}};
+    assign data_out[1] = read_enable[1] ? mem[1][read_elem[1]] : {`DATA_WIDTH{1'b0}};
+    assign data_out[2] = read_enable[2] ? mem[2][read_elem[2]] : {`DATA_WIDTH{1'b0}};
+    assign data_out[3] = read_enable[3] ? mem[3][read_elem[3]] : {`DATA_WIDTH{1'b0}};
 
 endmodule
