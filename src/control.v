@@ -1,7 +1,6 @@
 // Control Unit of Mini TPU
 `define DATA_WIDTH 8  // Define macro for register width
 
-
 module control (
     input wire clk,
     input wire rst_n,
@@ -44,8 +43,6 @@ module control (
     localparam START = 2'b00;
     localparam STOP  = 2'b01;
     
-    // Memory selection and addressing are now handled directly in the instruction decoding section
-    
     // Reset logic
     always @(negedge rst_n) begin
         counter <= 0;
@@ -59,11 +56,10 @@ module control (
         end
     end
 
-
     // Generate memory read enable signals
     genvar i;
     generate
-        for (i = 0; i < `ARRAY_SIZE; i = i + 1) begin : read_enable_gen
+        for (i = 0; i < 4; i = i + 1) begin : read_enable_gen
             // Memory A read enable timing
             assign mema_read_enable[i] = (counter >= (i+1) && counter <= (i+4));
             
@@ -74,22 +70,22 @@ module control (
 
     // Generate memory read element selectors
     // These are the 2-bit selectors for each memory row/column
-    wire [1:0] mem_read_elem_array [`ARRAY_SIZE-1:0];
+    wire [1:0] mema_read_elem_array [3:0];
     
     generate
-        for (i = 0; i < `ARRAY_SIZE; i = i + 1) begin : read_elem_gen
+        for (i = 0; i < 4; i = i + 1) begin : read_elem_gen
             // Memory A read element selection based on counter and row
-            assign mem_read_elem_array[i] = 
+            assign mema_read_elem_array[i] = 
                 (counter == (i+1)) ? 2'b00 :
                 (counter == (i+2)) ? 2'b01 :
                 (counter == (i+3)) ? 2'b10 :
                 (counter == (i+4)) ? 2'b11 : 2'b00;
                 
             // Assign to the correct bits in the output bus
-            assign mema_read_elem[i*2+:2] = mem_read_elem_array[i];
+            assign mema_read_elem[(i*2)+:2] = mema_read_elem_array[i];
             
             // Memory B uses the same pattern as Memory A
-            assign memb_read_elem[i*2+:2] = mem_read_elem_array[i];
+            assign memb_read_elem[(i*2)+:2] = mema_read_elem_array[i];
         end
     endgenerate
 
