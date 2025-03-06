@@ -1,5 +1,7 @@
 `define DATA_WIDTH 8  // Define macro for register width
 
+
+
 module memory (
     input wire clk,
     input wire rst_n,
