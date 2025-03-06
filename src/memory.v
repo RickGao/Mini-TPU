@@ -18,21 +18,6 @@ module memory (
     reg [`DATA_WIDTH-1:0] mem [3:0][3:0];
 
     integer line, elem;
-    
-    // Extract individual read_elem values
-    wire [1:0] read_elem_0 = read_elem[1:0];
-    wire [1:0] read_elem_1 = read_elem[3:2];
-    wire [1:0] read_elem_2 = read_elem[5:4];
-    wire [1:0] read_elem_3 = read_elem[7:6];
-    
-    // Individual output signals
-    wire [`DATA_WIDTH-1:0] data_out_0;
-    wire [`DATA_WIDTH-1:0] data_out_1;
-    wire [`DATA_WIDTH-1:0] data_out_2;
-    wire [`DATA_WIDTH-1:0] data_out_3;
-    
-    // Combine individual outputs into a single bus
-    assign data_out = {data_out_3, data_out_2, data_out_1, data_out_0};
 
     // Reset: Initialize all memory cells to 0 when rst_n is LOW
     always @(negedge rst_n) begin
@@ -52,9 +37,13 @@ module memory (
 
     // Asynchronous read
     // Assign outputs based on read_enable and read_elem values
-    assign data_out_0 = read_enable[0] ? mem[0][read_elem_0] : {`DATA_WIDTH{1'b0}};
-    assign data_out_1 = read_enable[1] ? mem[1][read_elem_1] : {`DATA_WIDTH{1'b0}};
-    assign data_out_2 = read_enable[2] ? mem[2][read_elem_2] : {`DATA_WIDTH{1'b0}};
-    assign data_out_3 = read_enable[3] ? mem[3][read_elem_3] : {`DATA_WIDTH{1'b0}};
+    assign data_out[`DATA_WIDTH-1:0] = 
+        read_enable[0] ? mem[0][read_elem[1:0]] : {`DATA_WIDTH{1'b0}};
+    assign data_out[`DATA_WIDTH*2-1:`DATA_WIDTH] = 
+        read_enable[1] ? mem[1][read_elem[3:2]] : {`DATA_WIDTH{1'b0}};
+    assign data_out[`DATA_WIDTH*3-1:`DATA_WIDTH*2] = 
+        read_enable[2] ? mem[2][read_elem[5:4]] : {`DATA_WIDTH{1'b0}};
+    assign data_out[`DATA_WIDTH*4-1:`DATA_WIDTH*3] = 
+        read_enable[3] ? mem[3][read_elem[7:6]] : {`DATA_WIDTH{1'b0}};
 
 endmodule
