@@ -1,5 +1,5 @@
-`default_nettype none
-`timescale 1ns/1ns
+`define DATA_WIDTH 8  // Define bit-width for input A and B
+`define ACC_WIDTH 8  // Define bit-width for accumulation C
 
 
 module tpu (
@@ -14,6 +14,8 @@ wire array_write_enable;
 wire [`DATA_WIDTH*4-1:0] array_a_in;
 wire [`DATA_WIDTH*4-1:0] array_b_in;
 wire [`ACC_WIDTH*16-1:0] array_data_out;
+wire [1:0] array_output_row;
+wire [1:0] array_output_col;
 
 array array_inst (
     .clk(clk),
@@ -61,7 +63,7 @@ memory memory_a (
     .data_in(mema_data_in),
     .read_enable(mema_read_enable),
     .read_elem(mema_read_elem),
-    .data_out(mema_data_out)
+    .data_out(array_a_in)
 );
 
 // Memory B
@@ -74,8 +76,10 @@ memory memory_b (
     .data_in(memb_data_in),
     .read_enable(memb_read_enable),
     .read_elem(memb_read_elem),
-    .data_out(memb_data_out)
+    .data_out(array_b_in)
 );
+
+
 
 
 endmodule
