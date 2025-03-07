@@ -1,67 +1,230 @@
 `define DATA_WIDTH 8  // Define bit-width for input A and B
 `define ACC_WIDTH 16  // Define bit-width for accumulation C
 
+
 module array (
-    input  wire                          clk,
-    input  wire                          rst_n,
-    input  wire                          we,       // Write enable (when high, each PE performs its MAC)
-    // Unified input/output buses
-    input  wire [`DATA_WIDTH*4-1:0]      a_in,     // Packed activation inputs for all rows
-    input  wire [`DATA_WIDTH*4-1:0]      b_in,     // Packed weight inputs for all columns (top row)
-    output wire [`ACC_WIDTH*16-1:0]      array_data_out // Packed outputs for all PEs (16 elements total)
+    input  wire                       clk,
+    input  wire                       rst_n,
+    input  wire                       we,       // Write enable (when high, each PE performs its MAC)
+    
+    input wire  [`DATA_WIDTH*4-1:0]   a_in,
+    input wire  [`DATA_WIDTH*4-1:0]   b_in,
+    output wire [`ACC_WIDTH*16-1]     data_out
+    
 );
+    
+    // External activation inputs (one per row)
+    wire [`DATA_WIDTH-1:0] a_in0 = a_in[`DATA_WIDTH*1-1:`DATA_WIDTH*0];
+    wire [`DATA_WIDTH-1:0] a_in1 = a_in[`DATA_WIDTH*2-1:`DATA_WIDTH*1];
+    wire [`DATA_WIDTH-1:0] a_in2 = a_in[`DATA_WIDTH*3-1:`DATA_WIDTH*2];
+    wire [`DATA_WIDTH-1:0] a_in3 = a_in[`DATA_WIDTH*4-1:`DATA_WIDTH*3];
+    // External weight inputs (one per column, for the top row)
+    wire [`DATA_WIDTH-1:0] b_in0 = b_in[`DATA_WIDTH*1-1:`DATA_WIDTH*0];
+    wire [`DATA_WIDTH-1:0] b_in1 = b_in[`DATA_WIDTH*2-1:`DATA_WIDTH*1];
+    wire [`DATA_WIDTH-1:0] b_in2 = b_in[`DATA_WIDTH*3-1:`DATA_WIDTH*2];
+    wire [`DATA_WIDTH-1:0] b_in3 = b_in[`DATA_WIDTH*4-1:`DATA_WIDTH*3];
 
-    // Arrays to hold unpacked signals
-    wire [`DATA_WIDTH-1:0] a_in_array [0:3];     // Unpacked row activation inputs
-    wire [`DATA_WIDTH-1:0] b_in_array [0:3];     // Unpacked column weight inputs
-    wire [`ACC_WIDTH-1:0]  c_out_array [0:15];    // Unpacked PE outputs (flattened)
+    // Outputs: accumulated results from each PE (each 4x4 element)
+    wire [`ACC_WIDTH-1:0]      c00, c01, c02, c03,
+    wire [`ACC_WIDTH-1:0]      c10, c11, c12, c13,
+    wire [`ACC_WIDTH-1:0]      c20, c21, c22, c23,
+    wire [`ACC_WIDTH-1:0]      c30, c31, c32, c33
 
-    // Internal connection arrays for PE-to-PE data flow
-    wire [`DATA_WIDTH-1:0] a_wire [0:15];  // 4x4 PE activation flow (flattened)
-    wire [`DATA_WIDTH-1:0] b_wire [0:15];  // 4x4 PE weight flow (flattened)
+    assign data_out =  {c00, c01, c02, c03, 
+                        c10, c11, c12, c13, 
+                        c20, c21, c22, c23, 
+                        c30, c31, c32, c33};
 
-    // Unpack input buses to arrays
-    genvar input_idx;
-    generate
-        for (input_idx = 0; input_idx < 4; input_idx = input_idx + 1) begin : unpack_inputs
-            assign a_in_array[input_idx] = a_in[`DATA_WIDTH*(input_idx+1)-1:`DATA_WIDTH*input_idx];
-            assign b_in_array[input_idx] = b_in[`DATA_WIDTH*(input_idx+1)-1:`DATA_WIDTH*input_idx];
-        end
-    endgenerate
+    // Wires for activation signals between PEs (each is DATA_WIDTH wide)
+    // Row 0
+    wire [`DATA_WIDTH-1:0] a00, a01, a02, a03;
+    // Row 1
+    wire [`DATA_WIDTH-1:0] a10, a11, a12, a13;
+    // Row 2
+    wire [`DATA_WIDTH-1:0] a20, a21, a22, a23;
+    // Row 3
+    wire [`DATA_WIDTH-1:0] a30, a31, a32, a33;
 
-    // Pack outputs to the output bus
-    genvar pe_idx;
-    generate
-        for (pe_idx = 0; pe_idx < 16; pe_idx = pe_idx + 1) begin : pack_outputs
-            assign array_data_out[`ACC_WIDTH*(pe_idx+1)-1:`ACC_WIDTH*pe_idx] = c_out_array[pe_idx];
-        end
-    endgenerate
+    // Wires for weight signals between PEs (each is DATA_WIDTH wide)
+    // Row 0 (outputs from row 0 PEs, which feed row 1)
+    wire [`DATA_WIDTH-1:0] b00, b01, b02, b03;
+    // Row 1
+    wire [`DATA_WIDTH-1:0] b10, b11, b12, b13;
+    // Row 2
+    wire [`DATA_WIDTH-1:0] b20, b21, b22, b23;
+    // Row 3
+    wire [`DATA_WIDTH-1:0] b30, b31, b32, b33;
 
-    // Instantiate the PE array using generate
-    genvar row_idx, col_idx;
-    generate
-        for (row_idx = 0; row_idx < 4; row_idx = row_idx + 1) begin : pe_row_gen
-            for (col_idx = 0; col_idx < 4; col_idx = col_idx + 1) begin : pe_col_gen
-                wire [`DATA_WIDTH-1:0] a_input, b_input;
-                localparam linear_idx = row_idx * 4 + col_idx;
+    // -----------------------------------------
+    // Row 0 (Top row): use external activation and weight inputs
+    // -----------------------------------------
+    // Column 0, row 0
+    pe pe00 (
+        .clk(clk), .rst_n(rst_n), .we(we),
+        .a_in(a_in0),         // external activation for row 0
+        .b_in(b_in0),         // external weight for col 0
+        .a_out(a00),          // pass activation to the right
+        .b_out(b00),          // pass weight downward
+        .c_out(c00)           // partial (final) output for position (0,0)
+    );
 
-                // Determine input connections based on PE position
-                assign a_input = (col_idx == 0) ? a_in_array[row_idx] : a_wire[linear_idx - 1];
-                assign b_input = (row_idx == 0) ? b_in_array[col_idx] : b_wire[linear_idx - 4];
+    // Column 1, row 0
+    pe pe01 (
+        .clk(clk), .rst_n(rst_n), .we(we),
+        .a_in(a00),           // from left neighbor
+        .b_in(b_in1),         // external weight for col 1
+        .a_out(a01),
+        .b_out(b01),
+        .c_out(c01)
+    );
 
-                // Instantiate each PE
-                pe pe_inst (
-                    .clk(clk),
-                    .rst_n(rst_n),
-                    .we(we),
-                    .a_in(a_input),
-                    .b_in(b_input),
-                    .a_out(a_wire[linear_idx]),  // Output to the right
-                    .b_out(b_wire[linear_idx]),  // Output downward
-                    .c_out(c_out_array[linear_idx])
-                );
-            end
-        end
-    endgenerate
+    // Column 2, row 0
+    pe pe02 (
+        .clk(clk), .rst_n(rst_n), .we(we),
+        .a_in(a01),           // from left neighbor
+        .b_in(b_in2),         // external weight for col 2
+        .a_out(a02),
+        .b_out(b02),
+        .c_out(c02)
+    );
+
+    // Column 3, row 0
+    pe pe03 (
+        .clk(clk), .rst_n(rst_n), .we(we),
+        .a_in(a02),           // from left neighbor
+        .b_in(b_in3),         // external weight for col 3
+        .a_out(a03),
+        .b_out(b03),
+        .c_out(c03)
+    );
+
+    // -----------------------------------------
+    // Row 1
+    // -----------------------------------------
+    // Column 0, row 1: activation comes from external input; weight comes from the PE above (row 0, col 0)
+    pe pe10 (
+        .clk(clk), .rst_n(rst_n), .we(we),
+        .a_in(a_in1),         // external activation for row 1
+        .b_in(b00),           // from row 0, col 0
+        .a_out(a10),
+        .b_out(b10),
+        .c_out(c10)
+    );
+
+    // Column 1, row 1
+    pe pe11 (
+        .clk(clk), .rst_n(rst_n), .we(we),
+        .a_in(a10),           // from left neighbor (row 1, col 0)
+        .b_in(b01),           // from above (row 0, col 1)
+        .a_out(a11),
+        .b_out(b11),
+        .c_out(c11)
+    );
+
+    // Column 2, row 1
+    pe pe12 (
+        .clk(clk), .rst_n(rst_n), .we(we),
+        .a_in(a11),           // from left neighbor
+        .b_in(b02),           // from above (row 0, col 2)
+        .a_out(a12),
+        .b_out(b12),
+        .c_out(c12)
+    );
+
+    // Column 3, row 1
+    pe pe13 (
+        .clk(clk), .rst_n(rst_n), .we(we),
+        .a_in(a12),           // from left neighbor
+        .b_in(b03),           // from above (row 0, col 3)
+        .a_out(a13),
+        .b_out(b13),
+        .c_out(c13)
+    );
+
+    // -----------------------------------------
+    // Row 2
+    // -----------------------------------------
+    // Column 0, row 2
+    pe pe20 (
+        .clk(clk), .rst_n(rst_n), .we(we),
+        .a_in(a_in2),         // external activation for row 2
+        .b_in(b10),           // from above (row 1, col 0)
+        .a_out(a20),
+        .b_out(b20),
+        .c_out(c20)
+    );
+
+    // Column 1, row 2
+    pe pe21 (
+        .clk(clk), .rst_n(rst_n), .we(we),
+        .a_in(a20),           // from left neighbor
+        .b_in(b11),           // from above (row 1, col 1)
+        .a_out(a21),
+        .b_out(b21),
+        .c_out(c21)
+    );
+
+    // Column 2, row 2
+    pe pe22 (
+        .clk(clk), .rst_n(rst_n), .we(we),
+        .a_in(a21),           // from left neighbor
+        .b_in(b12),           // from above (row 1, col 2)
+        .a_out(a22),
+        .b_out(b22),
+        .c_out(c22)
+    );
+
+    // Column 3, row 2
+    pe pe23 (
+        .clk(clk), .rst_n(rst_n), .we(we),
+        .a_in(a22),           // from left neighbor
+        .b_in(b13),           // from above (row 1, col 3)
+        .a_out(a23),
+        .b_out(b23),
+        .c_out(c23)
+    );
+
+    // -----------------------------------------
+    // Row 3
+    // -----------------------------------------
+    // Column 0, row 3
+    pe pe30 (
+        .clk(clk), .rst_n(rst_n), .we(we),
+        .a_in(a_in3),         // external activation for row 3
+        .b_in(b20),           // from above (row 2, col 0)
+        .a_out(a30),
+        .b_out(b30),
+        .c_out(c30)
+    );
+
+    // Column 1, row 3
+    pe pe31 (
+        .clk(clk), .rst_n(rst_n), .we(we),
+        .a_in(a30),           // from left neighbor
+        .b_in(b21),           // from above (row 2, col 1)
+        .a_out(a31),
+        .b_out(b31),
+        .c_out(c31)
+    );
+
+    // Column 2, row 3
+    pe pe32 (
+        .clk(clk), .rst_n(rst_n), .we(we),
+        .a_in(a31),           // from left neighbor
+        .b_in(b22),           // from above (row 2, col 2)
+        .a_out(a32),
+        .b_out(b32),
+        .c_out(c32)
+    );
+
+    // Column 3, row 3
+    pe pe33 (
+        .clk(clk), .rst_n(rst_n), .we(we),
+        .a_in(a32),           // from left neighbor
+        .b_in(b23),           // from above (row 2, col 3)
+        .a_out(a33),
+        .b_out(b33),
+        .c_out(c33)
+    );
 
 endmodule
