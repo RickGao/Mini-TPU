@@ -94,49 +94,9 @@ memory memory_b (
 );
 
 
-// wire [3:0] result_index = {array_output_row, array_output_col};
-// wire [`ACC_WIDTH-1:0] selected_result = array_data_out[`ACC_WIDTH*(result_index+1)-1:`ACC_WIDTH*result_index];
-// assign result = selected_result[7:0];
 
-// wire [3:0] result_index = {array_output_row, array_output_col};
-
-// wire [`ACC_WIDTH-1:0] result_0 = array_data_out[8*1-1:8*0];
-// wire [`ACC_WIDTH-1:0] result_1 = array_data_out[8*2-1:8*1];
-// wire [`ACC_WIDTH-1:0] result_2 = array_data_out[8*3-1:8*2];
-// wire [`ACC_WIDTH-1:0] result_3 = array_data_out[8*4-1:8*3];
-// wire [`ACC_WIDTH-1:0] result_4 = array_data_out[8*5-1:8*4];
-// wire [`ACC_WIDTH-1:0] result_5 = array_data_out[8*6-1:8*5];
-// wire [`ACC_WIDTH-1:0] result_6 = array_data_out[8*7-1:8*6];
-// wire [`ACC_WIDTH-1:0] result_7 = array_data_out[8*8-1:8*7];
-// wire [`ACC_WIDTH-1:0] result_8 = array_data_out[8*9-1:8*8];
-// wire [`ACC_WIDTH-1:0] result_9 = array_data_out[8*10-1:8*9];
-// wire [`ACC_WIDTH-1:0] result_10 = array_data_out[8*11-1:8*10];
-// wire [`ACC_WIDTH-1:0] result_11 = array_data_out[8*12-1:8*11];
-// wire [`ACC_WIDTH-1:0] result_12 = array_data_out[8*13-1:8*12];
-// wire [`ACC_WIDTH-1:0] result_13 = array_data_out[8*14-1:8*13];
-// wire [`ACC_WIDTH-1:0] result_14 = array_data_out[8*15-1:8*14];
-// wire [`ACC_WIDTH-1:0] result_15 = array_data_out[8*16-1:8*15];
-
-// assign result = 
-//     (result_index == 4'd0) ? result_0 :
-//     (result_index == 4'd1) ? result_1 :
-//     (result_index == 4'd2) ? result_2 :
-//     (result_index == 4'd3) ? result_3 :
-//     (result_index == 4'd4) ? result_4 :
-//     (result_index == 4'd5) ? result_5 :
-//     (result_index == 4'd6) ? result_6 :
-//     (result_index == 4'd7) ? result_7 :
-//     (result_index == 4'd8) ? result_8 :
-//     (result_index == 4'd9) ? result_9 :
-//     (result_index == 4'd10) ? result_10 :
-//     (result_index == 4'd11) ? result_11 :
-//     (result_index == 4'd12) ? result_12 :
-//     (result_index == 4'd13) ? result_13 :
-//     (result_index == 4'd14) ? result_14 :
-//     result_15;
-
-wire [`ACC_WIDTH-1:0] result_array [0:15];
 wire [3:0] result_index = {array_output_row, array_output_col};
+wire [`ACC_WIDTH-1:0] result_array [0:15];
 
 
 genvar i;
