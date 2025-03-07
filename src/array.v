@@ -25,10 +25,10 @@ module array (
     wire [`DATA_WIDTH-1:0] b_in3 = b_in[`DATA_WIDTH*4-1:`DATA_WIDTH*3];
 
     // Outputs: accumulated results from each PE (each 4x4 element)
-    wire [`ACC_WIDTH-1:0]      c00, c01, c02, c03,
-    wire [`ACC_WIDTH-1:0]      c10, c11, c12, c13,
-    wire [`ACC_WIDTH-1:0]      c20, c21, c22, c23,
-    wire [`ACC_WIDTH-1:0]      c30, c31, c32, c33
+    wire [`ACC_WIDTH-1:0]      c00, c01, c02, c03;
+    wire [`ACC_WIDTH-1:0]      c10, c11, c12, c13;
+    wire [`ACC_WIDTH-1:0]      c20, c21, c22, c23;
+    wire [`ACC_WIDTH-1:0]      c30, c31, c32, c33;
 
     assign data_out =  {c00, c01, c02, c03, 
                         c10, c11, c12, c13, 
