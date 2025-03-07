@@ -10,6 +10,20 @@ module tpu (
     output wire [7:0] result
 );
 
+wire [`DATA_WIDTH-1:0] mema_data_in;
+wire mema_write_enable;
+wire [1:0] mema_write_line;
+wire [1:0] mema_write_elem;
+wire [3:0] mema_read_enable;
+wire [7:0] mema_read_elem;
+
+wire [`DATA_WIDTH-1:0] memb_data_in;
+wire memb_write_enable;
+wire [1:0] memb_write_line;
+wire [1:0] memb_write_elem;
+wire [3:0] memb_read_enable;
+wire [7:0] memb_read_elem;
+
 wire array_write_enable;
 wire [`DATA_WIDTH*4-1:0] array_a_in;
 wire [`DATA_WIDTH*4-1:0] array_b_in;
@@ -80,6 +94,9 @@ memory memory_b (
 );
 
 
+wire [3:0] result_index = {array_output_row, array_output_col};
+wire [`ACC_WIDTH-1:0] selected_result = array_data_out[`ACC_WIDTH*(result_index+1)-1:`ACC_WIDTH*result_index];
+assign result = selected_result[7:0];
 
 
 endmodule
