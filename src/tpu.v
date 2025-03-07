@@ -136,6 +136,8 @@ memory memory_b (
 //     result_15;
 
 wire [`ACC_WIDTH-1:0] result_array [0:15];
+wire [3:0] result_index = {array_output_row, array_output_col};
+
 
 genvar i;
 generate
