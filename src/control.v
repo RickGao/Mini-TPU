@@ -43,32 +43,28 @@ module control (
     localparam START = 2'b00;
     localparam STOP  = 2'b01;
     
-    // Reset logic
-    always @(negedge rst_n) begin
-        counter <= 0;
-        status <= 0;
-    end
 
-    // Counter logic - increments when status is active
-    always @(posedge clk) begin
-        if (status) begin
+    always @(posedge clk or negedge rst_n) begin
+        // Reset logic
+        if (!rst_n) begin
+            counter <= 0;
+            status <= 0;
+        // Start instruction
+        end else if (opcode == START) begin
+            status <= 1;
+        // Stop instruction
+        end else if (opcode == STOP) begin
+            status <= 0;
+        // Counter logic - increments when status is active
+        end else if (status) begin
             counter <= counter + 1'b1;
-            if (counter > 9) begin // At Cycle 10, 4x4 array finish calculating, auto stop
+            // After Cycle 10, 4x4 array finish calculating, auto stop
+            if (counter > 9) begin
                 status <= 0;
             end
         end
-        case (opcode)
-            START: begin
-                status <= 1; // Start the counter
-            end
-                
-            STOP: begin
-                status <= 0; // Stop the counter
-            end
-
-        endcase
-        
     end
+
 
     // Generate memory read enable signals
     genvar i;
@@ -102,34 +98,24 @@ module control (
             assign memb_read_elem[(i*2)+:2] = mem_read_elem_array[i];
         end
     endgenerate
+    
+
+    assign mema_data_in = (!mem_select && opcode == LOAD) ? imm : `DATA_WIDTH'b0;
+    assign memb_data_in = (mem_select && opcode == LOAD) ? imm : `DATA_WIDTH'b0;
+
+    assign mema_write_enable = (!mem_select && opcode == LOAD);
+    assign memb_write_enable = (mem_select && opcode == LOAD);
+
+    assign mema_write_line = (!mem_select && opcode == LOAD) ? row : 2'b00;
+    assign mema_write_elem = (!mem_select && opcode == LOAD) ? col : 2'b00;
+    
+    assign memb_write_line = (mem_select && opcode == LOAD) ? row : 2'b00;
+    assign memb_write_elem = (mem_select && opcode == LOAD) ? col : 2'b00;
+
+    assign array_output_row = (opcode == STORE) ? row : 2'b00;
+    assign array_output_col = (opcode == STORE) ? col : 2'b00;
+
+    assign array_write_enable = status;
 
 
-
-    case (opcode)
-            LOAD: begin
-                if (mem_select == 0) begin
-                    // Load to Memory A
-                    assign mema_data_in = immediate;
-                    assign mema_write_enable = 1'b1;
-                    assign mema_write_line = row;
-                    assign mema_write_elem = col;
-                end else begin
-                    // Load to Memory B
-                    assign memb_data_in = immediate;
-                    assign memb_write_enable = 1;
-                    assign memb_write_line = col;
-                    assign memb_write_elem = row;
-                end
-            end
-            
-            STORE: begin
-                // Read from systolic array at row/column
-                assign array_output_row = row;    // Row from instruction
-                assign array_output_col = col;    // Column from instruction
-            end
-            
-            default: begin
-                // No operation
-            end
-        endcase
 endmodule
