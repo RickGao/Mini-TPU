@@ -1,8 +1,4 @@
-// Memory of Mini TPU
-
 `define DATA_WIDTH 8 // Define macro for register width
-
-
 module memory (
     input wire clk,
     input wire rst_n,
@@ -38,23 +34,20 @@ module memory (
     
     integer ln, em;
     // Reset: Initialize all memory cells to 0 when rst_n is LOW
-    always @(posedge clk or negedge rst_n) begin
-      if (!rst_n) begin
-        // Reset all memory cells
+    always @(negedge rst_n) begin
         for (ln = 0; ln < 4; ln = ln + 1) begin
-          for (em = 0; em < 4; em = em + 1) begin
-            mem[ln][em] <= {`DATA_WIDTH{1'b0}};
-          end
+            for (em = 0; em < 4; em = em + 1) begin
+                mem[ln][em] <= {`DATA_WIDTH{1'b0}};
+            end
         end
-      end 
-      else begin
-        // Synchronous write
-        if (write_enable) begin
-          mem[write_line][write_elem] <= data_in;
-        end
-      end
     end
-
+    
+    // Synchronous write: Data is written on the rising edge of clk
+    always @(posedge clk) begin
+        if (write_enable) begin
+            mem[write_line][write_elem] <= data_in;
+        end
+    end
     
     // Asynchronous read using generate loop with internal arrays
     // Assign outputs based on read_enable and read_elem values
@@ -64,5 +57,4 @@ module memory (
             assign data_out_array[line] = read_enable[line] ? mem[line][read_elem_array[line]] : {`DATA_WIDTH{1'b0}};
         end
     endgenerate
-    
 endmodule

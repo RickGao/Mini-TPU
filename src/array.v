@@ -1,5 +1,7 @@
+// 4x4 array with processing elements of Systolic Array
+
 `define DATA_WIDTH 8  // Define bit-width for input A and B
-`define ACC_WIDTH 8  // Define bit-width for accumulation C
+`define ACC_WIDTH  8  // Define bit-width for accumulation C
 
 
 module array (

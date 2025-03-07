@@ -30,7 +30,7 @@ module tt_um_tpu (
     assign instruction [7:0]  = ui_in [7:0];    // Lower 8 bits are Input pins
     assign instruction [15:8] = uio_in [7:0];   // Upper 8 bits are IO pins
 
-
+    // TPU
     tpu tpu_inst (
         .clk        (clk),
         .rst_n      (rst_n),

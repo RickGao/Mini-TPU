@@ -9,11 +9,22 @@ You can also include images in this folder and reference them in the markdown. E
 
 ## How it works
 
-This is a Mini TPU
+This is a Mini TPU, an ASIC that aim to accelerate AI workload
+
+The core architecture is a Systolic Array
+
 
 ## How to test
 
-Use instruction to control
+## Instruction Format
+
+| Instruction   | Format                          | Description |
+|--------------|--------------------------------|-------------|
+| `LOAD m, r, c, x` | `10m0 rrcc xxxxxxxx` | Load data from memory `m` (0=MemoryA, 1=MemoryB) into `row r`, `column c` |
+| `STORE r, c` | `1100 rrcc 00000000` | Store data from `row r`, `column c` |
+| `START` | `0000 0000 00000000` | Set `status=1` to start computation |
+| `STOP` | `0100 0000 00000000` | Set `status=0` to stop computation |
+
 
 ## External hardware
 

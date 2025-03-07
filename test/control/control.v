@@ -1,5 +1,4 @@
 // Control Unit of Mini TPU
-
 `define DATA_WIDTH 8  // Define macro for register width
 
 module control (
