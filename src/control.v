@@ -53,6 +53,9 @@ module control (
     always @(posedge clk) begin
         if (status) begin
             counter <= counter + 1'b1;
+            if (counter > 9) begin // At Cycle 10, 4x4 array finish calculating, auto stop
+                status <= 0;
+            end
         end
         case (opcode)
             START: begin
