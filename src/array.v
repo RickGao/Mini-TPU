@@ -9,7 +9,7 @@ module array (
     
     input wire  [`DATA_WIDTH*4-1:0]   a_in,
     input wire  [`DATA_WIDTH*4-1:0]   b_in,
-    output wire [`ACC_WIDTH*16-1]     data_out
+    output wire [`ACC_WIDTH*16-1:0]   data_out
     
 );
     

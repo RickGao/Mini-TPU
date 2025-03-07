@@ -1,4 +1,6 @@
 `define DATA_WIDTH 8 // Define macro for register width
+
+
 module memory (
     input wire clk,
     input wire rst_n,
@@ -10,6 +12,8 @@ module memory (
     input wire [7:0] read_elem, // 4x2-bit, selects which row each column reads from
     output wire [`DATA_WIDTH*4-1:0] data_out // 4-column output, each with DATA_WIDTH-bit width
 );
+
+
     // 4x4 memory array, each cell is DATA_WIDTH-bit register
     reg [`DATA_WIDTH-1:0] mem [3:0][3:0];
     // Define internal arrays to better organize the data flow
