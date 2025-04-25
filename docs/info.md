@@ -22,8 +22,7 @@ The core architecture is a Systolic Array
 |--------------|--------------------------------|-------------|
 | `LOAD m, r, c, x` | `10m0 rrcc xxxxxxxx` | Load data from memory `m` (0=MemoryA, 1=MemoryB) into `row r`, `column c` |
 | `STORE r, c` | `1100 rrcc 00000000` | Store data from `row r`, `column c` |
-| `START` | `0000 0000 00000000` | Set `status=1` to start computation |
-| `STOP` | `0100 0000 00000000` | Set `status=0` to stop computation |
+| `RUN` | `0100 0000 00000000` | Run the array computation |
 
 
 ## External hardware
