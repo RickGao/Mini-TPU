@@ -98,12 +98,13 @@ async def tpu_matrix_show(dut):
     log_matrix(dut, "SW  Result (A×B)", sw_res)
     log_matrix(dut, "HW  Result", hw_res)
 
-    # A = [[random.randint(0, 15) for _ in range(4)] for _ in range(4)]
-    # B = [[random.randint(0, 15) for _ in range(4)] for _ in range(4)]
-    #
-    # hw_res, sw_res = await run_once(dut, A, B)
-    #
-    # log_matrix(dut, "Matrix A", A)
-    # log_matrix(dut, "Matrix B", B)
-    # log_matrix(dut, "SW  Result (A×B)", sw_res)
-    # log_matrix(dut, "HW  Result", hw_res)
+    for _ in range(3):
+        A = [[random.randint(0, 15) for _ in range(4)] for _ in range(4)]
+        B = [[random.randint(0, 15) for _ in range(4)] for _ in range(4)]
+
+        hw_res, sw_res = await run_once(dut, A, B)
+
+        log_matrix(dut, "Matrix A", A)
+        log_matrix(dut, "Matrix B", B)
+        log_matrix(dut, "SW  Result (A×B)", sw_res)
+        log_matrix(dut, "HW  Result", hw_res)
