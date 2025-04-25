@@ -28,40 +28,32 @@ module control (
 );
 
     reg [3:0] counter;
-    reg status;
+    // reg status;
     
     // Instruction decoding
     wire [1:0] opcode = instruction[15:14];
     wire mem_select = instruction[13];      // Memory selection bit for LOAD
-    wire [1:0] row = instruction[11:10];    // Row bits
-    wire [1:0] col = instruction[9:8];      // Column bits
-    wire [7:0] imm = instruction[7:0];      // Immediate data
-    
+    // wire set_status = instruction[13];
+    wire [1:0] row  = instruction[11:10];    // Row bits
+    wire [1:0] col  = instruction[9:8];      // Column bits
+    wire [7:0] imm  = instruction[7:0];      // Immediate data
+
     // Opcode definitions
     localparam LOAD  = 2'b10;
     localparam STORE = 2'b11;
-    localparam START = 2'b00;
-    localparam STOP  = 2'b01;
-    
+    localparam RUN   = 2'b01;
+    // localparam STOP  = 2'b01;
+    // localparam START = 1'b1;
 
     always @(posedge clk or negedge rst_n) begin
         // Reset logic
         if (!rst_n) begin
             counter <= 0;
-            status <= 0;
+            // status <= 0;
         // Start instruction
-        end else if (opcode == START) begin
-            status <= 1;
-        // Stop instruction
-        end else if (opcode == STOP) begin
-            status <= 0;
-        // Counter logic - increments when status is active
-        end else if (status) begin
+        end 
+        if (opcode == RUN) begin
             counter <= counter + 1'b1;
-            // After Cycle 10, 4x4 array finish calculating, auto stop
-            if (counter > 9) begin
-                status <= 0;
-            end
         end
     end
 
@@ -115,7 +107,7 @@ module control (
     assign array_output_row = (opcode == STORE) ? row : 2'b00;
     assign array_output_col = (opcode == STORE) ? col : 2'b00;
 
-    assign array_write_enable = status;
+    assign array_write_enable = (opcode == RUN);
 
 
 endmodule

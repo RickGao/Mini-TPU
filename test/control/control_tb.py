@@ -1,263 +1,187 @@
 import cocotb
-from cocotb.clock import Clock
-from cocotb.triggers import RisingEdge, FallingEdge, Timer
-from cocotb.regression import TestFactory
+from cocotb.clock     import Clock
+from cocotb.triggers  import RisingEdge, Timer
 import random
-import logging
-
-# Define the opcodes
-LOAD = 0b10
-STORE = 0b11
-START = 0b00
-STOP = 0b01
 
 
+# -------- opcode 定义，与 RTL 保持一致 -------- #
+OP_RUN   = 0b01
+OP_STOP =  0b00
+OP_LOAD  = 0b10
+OP_STORE = 0b11
+
+
+# ========== TB 辅助类 ========= #
 class ControlTB:
+    CLK_PERIOD = 10  # ns
+
     def __init__(self, dut):
         self.dut = dut
-        self.log = logging.getLogger("cocotb.tb")
-        self.log.setLevel(logging.DEBUG)
+        cocotb.start_soon(Clock(dut.clk, self.CLK_PERIOD, units="ns").start())
 
-        # Create a 10ns period clock
-        cocotb.start_soon(Clock(self.dut.clk, 10, units="ns").start())
 
+    # --- 复位 --- #
     async def reset(self):
-        # Reset the DUT
-        self.dut.rst_n.value = 1
-        await Timer(5, units="ns")
         self.dut.rst_n.value = 0
-        await Timer(5, units="ns")
+        # 保持低电平跨 3 个上升沿
+        for _ in range(3):
+            await RisingEdge(self.dut.clk)
         self.dut.rst_n.value = 1
         await RisingEdge(self.dut.clk)
-        # 额外等待一个周期, 确保复位完全生效
+
+    # ---------- 打印对比行 ----------
+    def _print_cmp(self, prefix: str, exp: str, act: str):
+        self.dut._log.info(f"{prefix:<20} | expected={exp} | actual={act}")
+
+    # --- 生成 16-bit 指令 --- #
+    @staticmethod
+    def make_instr(op, mem_sel=0, row=0, col=0, imm=0):
+        return (op  & 0b11)   << 14 | \
+               (mem_sel & 1)  << 13 | \
+               (row & 0b11)   << 10 | \
+               (col & 0b11)   <<  8 | \
+               (imm & 0xff)
+
+    # ------- 单条 LOAD 检查 ------- #
+    async def load_once(self, mem_sel, row, col, imm):
+        instr = self.make_instr(OP_LOAD, mem_sel, row, col, imm)
+        self.dut.instruction.value = instr
         await RisingEdge(self.dut.clk)
 
-    def create_instruction(self, opcode, mem_select=0, row=0, col=0, imm=0):
-        """
-        Create a 16-bit instruction based on the specified parameters
+        # 构造期望串
+        exp_en = '1'
+        exp_line = f"{row:02b}"
+        exp_elem = f"{col:02b}"
+        exp_data = f"{imm:02x}"
 
-        Bit layout according to the control module:
-        [15:14]=opcode, [13]=mem_select, [11:10]=row, [9:8]=col, [7:0]=imm
-        """
-        instruction = (opcode & 0b11) << 14
-        instruction |= (mem_select & 0b1) << 13
-        instruction |= (row & 0b11) << 10
-        instruction |= (col & 0b11) << 8
-        instruction |= (imm & 0xFF)
-        return instruction
+        if mem_sel == 0:  # 写 A
+            act_en = str(int(self.dut.mema_write_enable.value))
+            act_line = f"{int(self.dut.mema_write_line.value):02b}"
+            act_elem = f"{int(self.dut.mema_write_elem.value):02b}"
+            act_data = f"{int(self.dut.mema_data_in.value):02x}"
+            self._print_cmp("LOAD-A enable", exp_en, act_en)
+            self._print_cmp("LOAD-A line", exp_line, act_line)
+            self._print_cmp("LOAD-A elem", exp_elem, act_elem)
+            self._print_cmp("LOAD-A data", exp_data, act_data)
+            assert act_en == exp_en and act_line == exp_line \
+                   and act_elem == exp_elem and act_data == exp_data
+        else:  # 写 B
+            act_en = str(int(self.dut.memb_write_enable.value))
+            act_line = f"{int(self.dut.memb_write_line.value):02b}"
+            act_elem = f"{int(self.dut.memb_write_elem.value):02b}"
+            act_data = f"{int(self.dut.memb_data_in.value):02x}"
+            self._print_cmp("LOAD-B enable", exp_en, act_en)
+            self._print_cmp("LOAD-B line", exp_line, act_line)
+            self._print_cmp("LOAD-B elem", exp_elem, act_elem)
+            self._print_cmp("LOAD-B data", exp_data, act_data)
+            assert act_en == exp_en and act_line == exp_line \
+                   and act_elem == exp_elem and act_data == exp_data
 
-    async def check_load_instruction(self, mem_select, row, col, imm):
-        """
-        Test LOAD instruction to memory A or B
-        """
-        instruction = self.create_instruction(LOAD, mem_select, row, col, imm)
-        self.log.info(
-            f"Testing LOAD: mem_select={mem_select}, row={row}, col={col}, imm={imm}, instruction=0x{instruction:04x}")
-        self.dut.instruction.value = instruction
+    # ------- 单条 STORE 检查 ------- #
+    async def store_once(self, row, col):
+        instr = self.make_instr(OP_STORE, 0, row, col, 0)
+        self.dut.instruction.value = instr
         await RisingEdge(self.dut.clk)
 
-        if mem_select == 0:  # Memory A
-            self.log.info(
-                f"Memory A write signals: enable={self.dut.mema_write_enable.value}, line={self.dut.mema_write_line.value}, elem={self.dut.mema_write_elem.value}, data={self.dut.mema_data_in.value}")
-            assert self.dut.mema_write_enable.value == 1, f"Memory A write enable not activated: {self.dut.mema_write_enable.value}"
-            assert int(
-                self.dut.mema_write_line.value) == row, f"Memory A write line incorrect: {self.dut.mema_write_line.value} != {row}"
-            assert int(
-                self.dut.mema_write_elem.value) == col, f"Memory A write element incorrect: {self.dut.mema_write_elem.value} != {col}"
-            assert int(
-                self.dut.mema_data_in.value) == imm, f"Memory A data input incorrect: {self.dut.mema_data_in.value} != {imm}"
-            assert self.dut.memb_write_enable.value == 0, f"Memory B write enable should be inactive: {self.dut.memb_write_enable.value}"
-        else:  # Memory B
-            self.log.info(
-                f"Memory B write signals: enable={self.dut.memb_write_enable.value}, line={self.dut.memb_write_line.value}, elem={self.dut.memb_write_elem.value}, data={self.dut.memb_data_in.value}")
-            assert self.dut.memb_write_enable.value == 1, f"Memory B write enable not activated: {self.dut.memb_write_enable.value}"
-            assert int(
-                self.dut.memb_write_line.value) == row, f"Memory B write line incorrect: {self.dut.memb_write_line.value} != {row}"
-            assert int(
-                self.dut.memb_write_elem.value) == col, f"Memory B write element incorrect: {self.dut.memb_write_elem.value} != {col}"
-            assert int(
-                self.dut.memb_data_in.value) == imm, f"Memory B data input incorrect: {self.dut.memb_data_in.value} != {imm}"
-            assert self.dut.mema_write_enable.value == 0, f"Memory A write enable should be inactive: {self.dut.mema_write_enable.value}"
+        exp_row = f"{row:02b}"
+        exp_col = f"{col:02b}"
+        act_row = f"{int(self.dut.array_output_row.value):02b}"
+        act_col = f"{int(self.dut.array_output_col.value):02b}"
+        self._print_cmp("STORE row", exp_row, act_row)
+        self._print_cmp("STORE col", exp_col, act_col)
+        assert act_row == exp_row and act_col == exp_col
 
-    async def check_store_instruction(self, row, col):
+    # ------- RUN-phase 读使能检查并完整打印 ------- #
+    async def run_phase_check(self, cycles=9):
         """
-        Test STORE instruction
+        cycles : 想观察多少拍就填多少；默认 9 拍能覆盖 4×4 systolic array 的一次完整滑窗
         """
-        instruction = self.create_instruction(STORE, 0, row, col, 0)
-        self.log.info(f"Testing STORE: row={row}, col={col}, instruction=0x{instruction:04x}")
-        self.dut.instruction.value = instruction
-        await RisingEdge(self.dut.clk)
+        # ① 发 RUN 指令启动阵列
+        self.dut.instruction.value = self.make_instr(OP_RUN)
+        await RisingEdge(self.dut.clk)  # cycle-0
 
-        self.log.info(
-            f"Array output signals: row={self.dut.array_output_row.value}, col={self.dut.array_output_col.value}")
-        assert int(
-            self.dut.array_output_row.value) == row, f"Array output row incorrect: {self.dut.array_output_row.value} != {row}"
-        assert int(
-            self.dut.array_output_col.value) == col, f"Array output column incorrect: {self.dut.array_output_col.value} != {col}"
+        exp = [0, 0, 0, 0]
+        act_a = [int(self.dut.mema_read_enable[r].value) for r in range(4)]
+        act_b = [int(self.dut.memb_read_enable[r].value) for r in range(4)]
+        exp_str = ''.join(str(b) for b in exp)
+        act_a_str = ''.join(str(b) for b in act_a)
+        act_b_str = ''.join(str(b) for b in act_b)
+        self.dut._log.info(
+            f"Cycle {0 :2d} | Expected={exp_str} | "
+            f"MEMA={act_a_str} | MEMB={act_b_str}"
+        )
 
-    async def check_read_enable_signals(self):
-        """
-        Test the read enable signals when counter increments
-        """
-        # First set counter to 1 by issuing a START instruction
-        instruction = self.create_instruction(START)
-        self.log.info(f"Testing START instruction: 0x{instruction:04x}")
-        self.dut.instruction.value = instruction
-
-        # 等待一个时钟周期让指令被处理
-        await RisingEdge(self.dut.clk)
-
-        # 等待额外一个时钟周期让 status 更新生效 (因为使用了非阻塞赋值)
-        await RisingEdge(self.dut.clk)
-
-        # 记录初始状态
-        self.log.info(f"Initial state after START: counter={self.dut.counter.value}, status={self.dut.status.value}")
-
-        # 检查状态是否已更新
-        if self.dut.status.value != 1:
-            self.log.warning(f"Status not set to active after START instruction: {self.dut.status.value}")
-            # 当测试环境不满足期望时，手动设置状态以继续测试
-            self.dut.status.value = 1
+        # ② 连续观测 cycles 拍
+        for cyc in range(cycles):
             await RisingEdge(self.dut.clk)
 
-        # Wait for several clock cycles and check read_enable signals
-        for i in range(11):
-            self.log.info(f"Cycle {i + 1}: counter={self.dut.counter.value}, status={self.dut.status.value}")
+            # —— 计算期望 —— #
+            exp = [1 if (cyc >= r and cyc < r + 4) else 0 for r in range(4)]
 
-            # Check memory read enable signals
-            for j in range(4):
-                counter_val = int(self.dut.counter.value)
-                expected = 1 if (counter_val > j and counter_val < (j + 5)) else 0
-                actual_mema = int(self.dut.mema_read_enable[j].value)
-                actual_memb = int(self.dut.memb_read_enable[j].value)
+            # —— 读取实际值 —— #
+            act_a = [int(self.dut.mema_read_enable[r].value) for r in range(4)]
+            act_b = [int(self.dut.memb_read_enable[r].value) for r in range(4)]
 
-                self.log.info(
-                    f"  Memory read enable [{j}]: expected={expected}, mema={actual_mema}, memb={actual_memb}")
+            # —— 打印 —— #
+            # 这里用 Python f-string 把数组格式化为 0/1 字符串，例如 "1100"
+            exp_str = ''.join(str(b) for b in exp)
+            act_a_str = ''.join(str(b) for b in act_a)
+            act_b_str = ''.join(str(b) for b in act_b)
 
-                # 使用警告而不是断言，以便测试可以继续
-                if actual_mema != expected:
-                    self.log.warning(f"Memory A read enable [{j}] unexpected: got {actual_mema}, expected {expected}")
-                if actual_memb != expected:
-                    self.log.warning(f"Memory B read enable [{j}] unexpected: got {actual_memb}, expected {expected}")
+            self.dut._log.info(
+                f"Cycle {cyc + 1 :2d} | Expected={exp_str} | "
+                f"MEMA={act_a_str} | MEMB={act_b_str}"
+            )
 
-            # Log read element selectors
-            self.log.info(f"  Memory A read elements: {self.dut.mema_read_elem.value}")
-            self.log.info(f"  Memory B read elements: {self.dut.memb_read_elem.value}")
+            # —— 断言不变 —— #
+            assert act_a == exp, f"cycle{cyc}: memA {act_a_str}!={exp_str}"
+            assert act_b == exp, f"cycle{cyc}: memB {act_b_str}!={exp_str}"
 
-            await RisingEdge(self.dut.clk)
-
-        # Check auto-stop after counter reaches 10
-        if self.dut.status.value != 0:
-            self.log.warning(f"Status not automatically reset after cycles: {self.dut.status.value}")
-
-    async def check_stop_instruction(self):
-        """
-        Test STOP instruction
-        """
-        # First set the status active
-        self.dut.status.value = 1
-        await RisingEdge(self.dut.clk)
-
-        # Send STOP instruction
-        instruction = self.create_instruction(STOP)
-        self.log.info(f"Testing STOP instruction: 0x{instruction:04x}")
-        self.dut.instruction.value = instruction
-
-        # 等待指令处理
-        await RisingEdge(self.dut.clk)
-
-        # 等待状态更新
-        await RisingEdge(self.dut.clk)
-
-        if self.dut.status.value != 0:
-            self.log.warning(f"Status not reset after STOP instruction: {self.dut.status.value}")
+        self.dut.instruction.value = self.make_instr(OP_STOP)
 
 
+# ========== TEST 1：确定性功能 ========= #
 @cocotb.test()
-async def test_control_unit_basic(dut):
-    """Test basic functionality of the control unit"""
+async def control_basic(dut):
     tb = ControlTB(dut)
-
-    # Initialize and reset
-    dut.instruction.value = 0
     await tb.reset()
 
-    # Test LOAD instructions for Memory A
+    # LOAD A / LOAD B
     for i in range(4):
-        row = i % 4
-        col = (i + 1) % 4
-        imm = 0xA0 + i
-        await tb.check_load_instruction(0, row, col, imm)
+        await tb.load_once(0, i, (i+1)&3, 0xA0+i)
+        await tb.load_once(1, (i+1)&3, i, 0xB0+i)
 
-    # Test LOAD instructions for Memory B
+    # STORE
     for i in range(4):
-        row = i % 4
-        col = (i + 1) % 4
-        imm = 0xB0 + i
-        await tb.check_load_instruction(1, row, col, imm)
+        await tb.store_once(i, (i+1)&3)
 
-    # Test STORE instructions
-    for i in range(4):
-        row = i % 4
-        col = (i + 1) % 4
-        await tb.check_store_instruction(row, col)
 
-    # 重置设备, 确保状态干净
     await tb.reset()
-
-    # Test START and read enable signals
-    await tb.check_read_enable_signals()
-
-    # 重置设备, 确保状态干净
-    await tb.reset()
-
-    # Test STOP instruction
-    await tb.check_stop_instruction()
+    # RUN 检查
+    await tb.run_phase_check()
 
 
+# ========== TEST 2：随机指令 ========= #
 @cocotb.test()
-async def test_control_unit_random(dut):
-    """Test control unit with random inputs"""
+async def control_random(dut):
     tb = ControlTB(dut)
-
-    # Initialize and reset
-    dut.instruction.value = 0
     await tb.reset()
 
-    # Test random LOAD instructions
-    for i in range(5):
-        mem_select = random.randint(0, 1)
-        row = random.randint(0, 3)
-        col = random.randint(0, 3)
-        imm = random.randint(0, 255)
-        await tb.check_load_instruction(mem_select, row, col, imm)
+    # 随机 LOAD
+    for _ in range(6):
+        await tb.load_once(random.randint(0,1),
+                           random.randint(0,3),
+                           random.randint(0,3),
+                           random.randint(0,255))
 
-    # Test random STORE instructions
-    for i in range(5):
-        row = random.randint(0, 3)
-        col = random.randint(0, 3)
-        await tb.check_store_instruction(row, col)
-
-    # 重置设备, 确保状态干净
+    # 随机 STORE
+    for _ in range(6):
+        await tb.store_once(random.randint(0,3),
+                            random.randint(0,3))
     await tb.reset()
+    # 再跑一次 RUN
+    await tb.run_phase_check()
 
-    # Start computation and verify read enable signals
-    await tb.check_read_enable_signals()
-
-
-# 示例 Makefile 内容
-"""
-# Makefile for Cocotb testbench
-
-TOPLEVEL_LANG ?= verilog
-VERILOG_SOURCES = $(PWD)/control.v
-TOPLEVEL = control
-MODULE = control_tb
-
-include $(shell cocotb-config --makefiles)/Makefile.sim
-"""
-
-# 示例运行命令
-if __name__ == "__main__":
-    tb = TestFactory(test_control_unit_basic)
-    tb.generate_tests()
+    await tb.reset()
+    # RUN 检查
+    await tb.run_phase_check(15)
