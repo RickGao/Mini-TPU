@@ -15,3 +15,7 @@ test/pe/results.xml
 /test/memory/sim_build
 /test/memory/__pycache__
 test/memory/results.xml
+/src/__pycache__
+src/results.xml
+/src/sim_build
+/test/control/__pycache__
