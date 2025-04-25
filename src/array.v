@@ -36,6 +36,13 @@ module array (
                         c10, c11, c12, c13, 
                         c20, c21, c22, c23, 
                         c30, c31, c32, c33};
+    
+    // assign data_out = {
+    //     c33, c32, c31, c30,
+    //     c23, c22, c21, c20,
+    //     c13, c12, c11, c10,
+    //     c03, c02, c01, c00 
+    // };
 
     // Wires for activation signals between PEs (each is DATA_WIDTH wide)
     // Row 0

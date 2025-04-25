@@ -45,15 +45,24 @@ module control (
     // localparam STOP  = 2'b01;
     // localparam START = 1'b1;
 
+    // always @(posedge clk or negedge rst_n) begin
+    //     // Reset logic
+    //     if (!rst_n) begin
+    //         counter <= 0;
+    //         // status <= 0;
+    //     // Start instruction
+    //     end 
+    //     if (opcode == RUN) begin
+    //         counter <= counter + 1'b1;
+    //     end
+    // end
+    
     always @(posedge clk or negedge rst_n) begin
-        // Reset logic
-        if (!rst_n) begin
-            counter <= 0;
-            // status <= 0;
-        // Start instruction
+        if(!rst_n) begin
+        counter <= 4'd0;
         end 
-        if (opcode == RUN) begin
-            counter <= counter + 1'b1;
+        else if(opcode == RUN) begin
+        counter <= counter + 1'b1;
         end
     end
 
