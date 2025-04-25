@@ -1,0 +1,6 @@
+<testsuites name="results">
+  <testsuite name="all" package="all">
+    <property name="random_seed" value="1745571286" />
+    <testcase name="simple_flow" classname="control_tb" file="/Users/rickgao/Documents/GitHub/Mini-TPU/test/control/control_tb.py" lineno="93" time="0.0067310333251953125" sim_time_ns="900.001" ratio_time="133709.1879535279" />
+  </testsuite>
+</testsuites>
