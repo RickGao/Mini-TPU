@@ -39,10 +39,10 @@ def matmul_ref(a, b):
 async def load_matrices(dut, a, b):
     for r in range(4):
         for c in range(4):
-            await send_instr(dut, make_instr(OP_LOAD, 0, r, c, a[3-r][3-c]))
+            await send_instr(dut, make_instr(OP_LOAD, 0, r, c, a[r][c]))
     for r in range(4):
         for c in range(4):
-            await send_instr(dut, make_instr(OP_LOAD, 1, r, c, b[3-c][3-r]))
+            await send_instr(dut, make_instr(OP_LOAD, 1, r, c, b[c][r]))
 
 # ---------- STORE 读取矩阵 ----------
 async def read_matrix(dut):
@@ -82,29 +82,36 @@ def log_matrix(dut, title, mat):
 
 # =========================================================
 @cocotb.test()
-async def tpu_matrix_show(dut):
-    """打印 A、B、软件参考和硬件结果矩阵（无断言）"""
+async def Test_TPU(dut):
     cocotb.start_soon(Clock(dut.clk, 10, units="ns").start())
     dut.ena.value, dut.ui_in.value, dut.uio_in.value = 1, 0, 0
 
-    # # 随机 or 手动矩阵
-    A = [[1,2,3,4],[5,6,7,8],[9,10,11,12],[13,14,15,16]]
-    B = [[2,0,0,0],[0,3,0,0],[0,0,4,0],[0,0,0,5]]
+    cocotb.log.info("\nStart Testing TPU\n")
 
-    hw_res, sw_res = await run_once(dut, A, B)
-
-    log_matrix(dut, "Matrix A", A)
-    log_matrix(dut, "Matrix B", B)
-    log_matrix(dut, "SW  Result (A×B)", sw_res)
-    log_matrix(dut, "HW  Result", hw_res)
-
-    for _ in range(3):
-        A = [[random.randint(0, 15) for _ in range(4)] for _ in range(4)]
-        B = [[random.randint(0, 15) for _ in range(4)] for _ in range(4)]
-
+    async def test_and_log(A: list, B: list):
         hw_res, sw_res = await run_once(dut, A, B)
 
         log_matrix(dut, "Matrix A", A)
         log_matrix(dut, "Matrix B", B)
         log_matrix(dut, "SW  Result (A×B)", sw_res)
         log_matrix(dut, "HW  Result", hw_res)
+        print("\n")
+
+    I = [[1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 1, 0], [0, 0, 0, 1]]
+
+    zero = [[0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0]]
+
+    await test_and_log(I, zero)
+
+    A = [[1,2,3,4],[5,6,7,8],[9,10,11,12],[13,14,15,16]]
+    B = [[2,0,0,0],[0,3,0,0],[0,0,4,0],[0,0,0,5]]
+
+    await test_and_log(A, I)
+    await test_and_log(B, I)
+    await test_and_log(A, B)
+
+    for _ in range(3):
+        A = [[random.randint(0, 15) for _ in range(4)] for _ in range(4)]
+        B = [[random.randint(0, 15) for _ in range(4)] for _ in range(4)]
+
+        await test_and_log(A, B)
