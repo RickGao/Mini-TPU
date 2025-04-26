@@ -1,5 +1,5 @@
 # =========================================================
-#  test_tpu.py  —  TinyTapeout TPU 4×4 end-to-end demo
+# Mini TPU Test
 # =========================================================
 import random
 import cocotb
