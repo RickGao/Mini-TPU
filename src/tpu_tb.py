@@ -6,7 +6,7 @@ import cocotb
 from cocotb.clock     import Clock
 from cocotb.triggers  import RisingEdge, Timer
 
-# ---------- 指令编码 ----------
+# Instruction Encoding
 OP_RUN, OP_LOAD, OP_STORE = 0b01, 0b10, 0b11
 
 def make_instr(op, mem_sel=0, row=0, col=0, imm=0):
@@ -18,7 +18,7 @@ async def send_instr(dut, instr):
     dut.uio_in.value = instr >> 8
     await RisingEdge(dut.clk)
 
-# ---------- 复位 ----------
+# Reset
 async def hw_reset(dut, n=3):
     dut.rst_n.value = 0
     for _ in range(n):
@@ -26,7 +26,7 @@ async def hw_reset(dut, n=3):
     dut.rst_n.value = 1
     await RisingEdge(dut.clk)
 
-# ---------- 4×4 参考矩阵乘 ----------
+# 4×4 Matrix Multiplication
 def matmul_ref(a, b):
     n = len(a)
     c = [[0]*n for _ in range(n)]
@@ -35,7 +35,7 @@ def matmul_ref(a, b):
             c[i][j] = sum(a[i][k] * b[k][j] for k in range(n)) & 0xff
     return c
 
-# ---------- LOAD A、B ----------
+# LOAD A、B
 async def load_matrices(dut, a, b):
     for r in range(4):
         for c in range(4):
@@ -44,7 +44,7 @@ async def load_matrices(dut, a, b):
         for c in range(4):
             await send_instr(dut, make_instr(OP_LOAD, 1, r, c, b[c][r]))
 
-# ---------- STORE 读取矩阵 ----------
+# STORE
 async def read_matrix(dut):
     out = [[0]*4 for _ in range(4)]
     for r in range(4):
@@ -54,27 +54,20 @@ async def read_matrix(dut):
             out[r][c] = int(dut.uo_out.value)
     return out
 
-# ---------- 主流程 ----------
+# Matrix Multiplication
 async def run_once(dut, a, b):
     await hw_reset(dut)
     await load_matrices(dut, a, b)
 
-    # 连续 8 拍保持 RUN=1
-    for _ in range(15):
+    # 11 Cycle, RUN=1
+    for _ in range(11):
         await send_instr(dut, make_instr(OP_RUN))
-
-    # dut.ui_in.value = 0
-    # dut.uio_in.value = 0
-
-    # 额外等待 3 拍：数据完全流入右下角
-    # for _ in range(3):
-    #     await RisingEdge(dut.clk)
 
     hw_out = await read_matrix(dut)
     sw_out = matmul_ref(a, b)
     return hw_out, sw_out
 
-# ---------- 日志打印 ----------
+# Print Matrix
 def log_matrix(dut, title, mat):
     dut._log.info(f"--- {title} ---")
     for i, row in enumerate(mat):
