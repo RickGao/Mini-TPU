@@ -1,5 +1,6 @@
 // The module of Mini TPU with all parts assembled
 
+`timescale 1ns/1ps
 `define DATA_WIDTH 8  // Define bit-width for input A and B
 `define ACC_WIDTH 8  // Define bit-width for accumulation C
 
