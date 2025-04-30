@@ -15,7 +15,7 @@ module array (
 );
 
     /*=============================================
-     * 1) 2‑D interconnect buses
+     * 1) 2-D interconnect buses
      *===========================================*/
     // a_pipe[row][col] : activation flowing to the right
     wire [`DATA_WIDTH-1:0] a_pipe [0:3][0:4]; // 4 rows × 5 cols (last col is rightmost a_out)
@@ -28,11 +28,12 @@ module array (
     /*=============================================
      * 2) Map external inputs to the bus
      *===========================================*/
+     genvar row, col;
     generate
-        for (genvar row = 0; row < 4; row++) begin
+        for (row = 0; row < 4; row = row + 1 ) begin
             assign a_pipe[row][0] = a_in[`DATA_WIDTH*(row+1)-1:`DATA_WIDTH*row];
         end
-        for (genvar col = 0; col < 4; col++) begin
+        for (col = 0; col < 4; col = col + 1) begin
             assign b_pipe[0][col] = b_in[`DATA_WIDTH*(col+1)-1:`DATA_WIDTH*col];
         end
     endgenerate
@@ -41,8 +42,8 @@ module array (
      * 3) Instantiate the 4×4 processing element grid
      *===========================================*/
     generate
-        for (genvar row = 0; row < 4; row++) begin : ROWS
-            for (genvar col = 0; col < 4; col++) begin : COLS
+        for (genvar row = 0; row < 4; row =  row + 1) begin : ROWS
+            for (genvar col = 0; col < 4; col = col + 1) begin : COLS
                 pe pe_inst (
                     .clk   (clk),
                     .rst_n (rst_n),
@@ -59,14 +60,14 @@ module array (
     endgenerate
 
     /*=============================================
-     * 4) Flatten c_bus into data_out (row‑major order)
+     * 4) Flatten c_bus into data_out (row-major order)
      *===========================================*/
+
     generate
-        for (genvar row = 0; row < 4; row++) begin
-            for (genvar col = 0; col < 4; col++) begin
-                localparam int flat_idx = row*4 + col; // row‑major
-                assign data_out[`ACC_WIDTH*(flat_idx+1)-1:`ACC_WIDTH*flat_idx]
-                       = c_bus[row][col];
+        for (genvar row = 0; row < 4; row = row + 1) begin
+            for (genvar col = 0; col < 4; col = col + 1) begin
+                localparam flat_idx = row*4 + col; // row-major
+                assign data_out[`ACC_WIDTH*(flat_idx+1)-1:`ACC_WIDTH*flat_idx] = c_bus[row][col];
             end
         end
     endgenerate
