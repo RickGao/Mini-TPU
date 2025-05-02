@@ -1,5 +1,5 @@
 //============================================================================
-//  Mini-TPU one-button demo  -- Nexys A7-100T top level  (Method 2: $readmemh)
+//  Mini-TPU one-button demo  -- Nexys A7-100T top level  (Data input Method: $readmemh)
 //
 //  * matrix_A.mem / matrix_B.mem (16 bytes each, row-major) are read into two
 //    4×4 × 8-bit ROMs during configuration.
@@ -11,7 +11,6 @@
 //  * BTN_C (BTNC) is a global active-low reset.
 //  * Clock directly uses the on-board 100 MHz crystal (safe timing on Artix-7).
 //----------------------------------------------------------------------------
-//  Author : Dennis Du & Rick Gao
 //  Date   : 2025-05-01
 //============================================================================
 `timescale 1ns/1ps
