@@ -103,6 +103,14 @@ async def Test_TPU(dut):
     await test_and_log(B, I)
     await test_and_log(A, B)
 
+    A = [[(i + j) % 2 for j in range(4)] for i in range(4)]
+    B = [[(i * j) % 2 for j in range(4)] for i in range(4)]
+    await test_and_log(A, B)
+
+    A = [[5, 5, 5, 5] for _ in range(4)]  # all rows identical
+    B = [[1, 2, 3, 4]] * 4       # all columns identical
+    await test_and_log(A, B)
+
     for _ in range(3):
         A = [[random.randint(0, 15) for _ in range(4)] for _ in range(4)]
         B = [[random.randint(0, 15) for _ in range(4)] for _ in range(4)]
