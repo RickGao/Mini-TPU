@@ -10,8 +10,8 @@ from cocotb.triggers  import RisingEdge, Timer
 OP_RUN, OP_LOAD, OP_STORE = 0b01, 0b10, 0b11
 
 def make_instr(op, mem_sel=0, row=0, col=0, imm=0):
-    return ((op & 3) << 14) | ((mem_sel & 1) << 13) | \
-           ((row & 3) << 10) | ((col & 3) << 8) | (imm & 0xff)
+    return ((op & 2) << 14) | ((mem_sel & 1) << 13) | \
+           ((row & 2) << 10) | ((col & 2) << 8) | (imm & 0xff)
 
 async def send_instr(dut, instr):
     dut.ui_in.value  = instr & 0xff
