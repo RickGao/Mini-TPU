@@ -10,8 +10,8 @@ from cocotb.triggers  import RisingEdge, Timer
 OP_RUN, OP_LOAD, OP_STORE = 0b01, 0b10, 0b11
 
 def make_instr(op, mem_sel=0, row=0, col=0, imm=0):
-    return ((op & 2) << 14) | ((mem_sel & 1) << 13) | \
-           ((row & 2) << 10) | ((col & 2) << 8) | (imm & 0xff)
+    return ((op & 3) << 14) | ((mem_sel & 1) << 13) | \
+           ((row & 3) << 10) | ((col & 3) << 8) | (imm & 0xff)
 
 async def send_instr(dut, instr):
     dut.ui_in.value  = instr & 0xff
@@ -101,6 +101,14 @@ async def Test_TPU(dut):
 
     await test_and_log(A, I)
     await test_and_log(B, I)
+    await test_and_log(A, B)
+
+    A = [[(i + j) % 2 for j in range(4)] for i in range(4)]
+    B = [[(i * j) % 2 for j in range(4)] for i in range(4)]
+    await test_and_log(A, B)
+
+    A = [[5, 5, 5, 5] for _ in range(4)]  # all rows identical
+    B = [[1, 2, 3, 4]] * 4       # all columns identical
     await test_and_log(A, B)
 
     for _ in range(3):
