@@ -11,6 +11,7 @@
 //  * BTN_C (BTNC) is a global active-low reset.
 //  * Clock directly uses the on-board 100 MHz crystal (safe timing on Artix-7).
 //----------------------------------------------------------------------------
+//  Author : Dennis Du
 //  Date   : 2025-05-01
 //============================================================================
 `timescale 1ns/1ps
@@ -111,7 +112,7 @@ always @(posedge clk or negedge rst_n) begin
         S_RUN: begin
             instr   <= {2'b01, 2'b00, 2'b00, 2'b00, 8'h00};
             run_ctr <= run_ctr + 1'b1;
-            if (run_ctr == 4'd10) begin
+            if (run_ctr == 4'd12) begin
                 run_ctr <= 0;
                 state   <= S_STORE;
             end
