@@ -11,6 +11,7 @@
 //  * BTN_C (BTNC) is a global active-low reset.
 //  * Clock directly uses the on-board 100 MHz crystal (safe timing on Artix-7).
 //----------------------------------------------------------------------------
+//  Author : Dennis Du & Rick Gao
 //  Date   : 2025-05-01
 //============================================================================
 `timescale 1ns/1ps
@@ -65,94 +66,110 @@ end
 reg [7:0] C_buf [0:15];
 
 /* -------------------------------------------------------------------------
- * 5) Simple FSM:  LOAD-A ? LOAD-B ? RUN ? STORE ? DONE
- * ---------------------------------------------------------------------- */
-localparam S_LOAD_A = 3'd0,
-           S_LOAD_B = 3'd1,
-           S_RUN    = 3'd2,
-           S_STORE  = 3'd3,
-           S_DONE   = 3'd4;
+  * 5) Simple FSM:  LOAD-A ▸ LOAD-B ▸ RUN ▸ STORE0 ▸ STORE1 ▸ DONE
+  * ---------------------------------------------------------------------- */
+ localparam S_LOAD_A  = 3'd0,
+            S_LOAD_B  = 3'd1,
+            S_RUN     = 3'd2,
+            S_STORE0  = 3'd3,   // send store instr
+            S_STORE1  = 3'd4,   // next cycle the result write to C_buf
+            S_DONE    = 3'd5;
+ 
+ reg [1:0] row, col, row_d, col_d; // row_d/col_d: remeber last cycle addr
+ reg [2:0] state;
+ reg [1:0] row, col;               // address counters
+ reg [3:0] run_ctr;                // counts 0-12 cycles
+ 
 
-reg [2:0] state;
-reg [1:0] row, col;               // address counters
-reg [3:0] run_ctr;                // counts 0-10 cycles
+ always @(posedge clk or negedge rst_n) begin
+     if (!rst_n) begin
+         state   <= S_LOAD_A;
+         row     <= 0;  col     <= 0;
+         row_d   <= 0;  col_d   <= 0;
+         run_ctr <= 0;
+     end else begin
+         case (state)
+         // ---------- LOAD A -------------------------------------------------
+                 S_LOAD_A: begin
+                     instr <= {2'b10, 2'b00, row, col, A_ROM[{row,col}]};
+                     if (col == 2'd3) begin
+                         col <= 0;
+                         if (row == 2'd3) begin
+                             row   <= 0;
+                             state <= S_LOAD_B;
+                         end else row <= row + 1'b1;
+                     end else col <= col + 1'b1;
+                 end
+                 // ---------- LOAD B -------------------------------------------------
+                 S_LOAD_B: begin
+                     instr <= {2'b10, 2'b10, col, row, B_ROM[{row,col}]};
+                     if (col == 2'd3) begin
+                         col <= 0;
+                         if (row == 2'd3) begin
+                             row   <= 0;
+                             state <= S_RUN;
+                         end else row <= row + 1'b1;
+                     end else col <= col + 1'b1;
+                 end
+                 // ---------- RUN for 12 cycles -------------------------------------
+                 S_RUN: begin
+                     instr   <= {2'b01, 2'b00, 2'b00, 2'b00, 8'h00};
+                     run_ctr <= run_ctr + 1'b1;
+                     if (run_ctr == 4'd12) begin
+                         run_ctr <= 0;
+                         state   <= S_STORE0;
+                     end
+                 end
+         /* ---------- STORE0 : send store instr--------------------------- */
+         S_STORE0: begin
+             instr  <= {2'b11, 2'b00, row, col, 8'h00};
+             row_d  <= row;                // remember addr
+             col_d  <= col;
+             if (row_d == 2'd3 & col_d ==2'd3) state <= S_DONE;
+             else state  <= S_STORE1;           // wait one cycle
+         end
+         /* ---------- STORE1 : get 1 cycle delayed result---------------------- */
+         S_STORE1: begin
+             instr <= 16'h0000;            // NOP
+             C_buf[{row_d, col_d}] <= result;
+ 
+             /* move row and col */
+             if (col == 2'd3) begin
+                 col <= 0;
+                 if (row == 2'd3) begin
+                     state <= S_DONE;
+                 end else row <= row + 1'b1;
+             end else col <= col + 1'b1;
+ 
+             state <= S_STORE0;            // send next STORE
+         end
+         /* ---------- DONE ------------------------------------------------ */
+         default: instr <= 16'h0000;
+         endcase
+     end
+ end
 
-always @(posedge clk or negedge rst_n) begin
-    if (!rst_n) begin
-        state   <= S_LOAD_A;
-        row     <= 2'd0;
-        col     <= 2'd0;
-        run_ctr <= 4'd0;
-    end else begin
-        case (state)
-        // ---------- LOAD A -------------------------------------------------
-        S_LOAD_A: begin
-            instr <= {2'b10, 2'b00, row, col, A_ROM[{row,col}]};
-            if (col == 2'd3) begin
-                col <= 0;
-                if (row == 2'd3) begin
-                    row   <= 0;
-                    state <= S_LOAD_B;
-                end else row <= row + 1'b1;
-            end else col <= col + 1'b1;
-        end
-        // ---------- LOAD B -------------------------------------------------
-        S_LOAD_B: begin
-            instr <= {2'b10, 2'b10, row, col, B_ROM[{row,col}]};
-            if (col == 2'd3) begin
-                col <= 0;
-                if (row == 2'd3) begin
-                    row   <= 0;
-                    state <= S_RUN;
-                end else row <= row + 1'b1;
-            end else col <= col + 1'b1;
-        end
-        // ---------- RUN for 10 cycles -------------------------------------
-        S_RUN: begin
-            instr   <= {2'b01, 2'b00, 2'b00, 2'b00, 8'h00};
-            run_ctr <= run_ctr + 1'b1;
-            if (run_ctr == 4'd12) begin
-                run_ctr <= 0;
-                state   <= S_STORE;
-            end
-        end
-        // ---------- STORE all 16 results ----------------------------------
-        S_STORE: begin
-            instr <= {2'b11, 2'b00, row, col, 8'h00};
-            C_buf[{row,col}] <= result;
-            if (col == 2'd3) begin
-                col <= 0;
-                if (row == 2'd3) begin
-                    state <= S_DONE;
-                end else row <= row + 1'b1;
-            end else col <= col + 1'b1;
-        end
-        // ---------- DONE ---------------------------------------------------
-        default: instr <= 16'h0000; // idle
-        endcase
-    end
-end
 
 /* -------------------------------------------------------------------------
  * 6) Front-panel viewer - BTNR cycles through the 16 bytes
  * ---------------------------------------------------------------------- */
 reg btn0, btn1;                  // simple two-FF synchroniser
-always @(posedge clk) begin
-    btn0 <= BTNR;
-    btn1 <= btn0;
-end
-wire next_byte = btn0 & ~btn1;   // rising edge pulse
-
-reg [3:0] view_idx;              // 0-15 (needs 5 bits)
-always @(posedge clk or negedge rst_n) begin
-    if (!rst_n) view_idx <= 5'd0;
-    else if (state == S_DONE && next_byte) view_idx <= view_idx + 1'b1;
-end
-
-/* show selected byte on LED7-0; clear upper LEDs */
-always @(posedge clk) begin
-    LED[7:0]  <= C_buf[view_idx[3:0]];  // lower 8 LEDs
-    LED[15:8] <= 8'h00;                 // blank
-end
-
-endmodule
+ always @(posedge clk) begin
+     btn0 <= BTNR;
+     btn1 <= btn0;
+ end
+ wire next_byte = btn0 & ~btn1;   // rising edge pulse
+ 
+ reg [3:0] view_idx;              // 0-15 (needs 5 bits)
+ always @(posedge clk or negedge rst_n) begin
+     if (!rst_n) view_idx <= 5'd0;
+     else if (state == S_DONE && next_byte) view_idx <= view_idx + 1'b1;
+ end
+ 
+ /* show selected byte on LED7-0; clear upper LEDs */
+ always @(posedge clk) begin
+     LED[7:0]  <= C_buf[view_idx[3:0]];  // lower 8 LEDs
+     LED[15:8] <= 8'h00;                 // blank
+ end
+ 
+ endmodule
