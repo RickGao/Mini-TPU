@@ -13,6 +13,9 @@ This is a Mini TPU, an ASIC that aim to accelerate AI workload
 
 The core architecture is a Systolic Array
 
+We have implement FPGA version of this project, use the FPGA top.
+
+
 
 ## How to test
 
