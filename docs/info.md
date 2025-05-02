@@ -27,4 +27,4 @@ The core architecture is a Systolic Array
 
 ## External hardware
 
-No external hardware
+FPGA Board with button/switch
