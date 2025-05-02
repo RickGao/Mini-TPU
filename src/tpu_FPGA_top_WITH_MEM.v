@@ -1,4 +1,3 @@
-
 //============================================================================
 //  Mini-TPU one-button demo  -- Nexys A7-100T top level  (Method 2: $readmemh)
 //
@@ -12,7 +11,7 @@
 //  * BTN_C (BTNC) is a global active-low reset.
 //  * Clock directly uses the on-board 100 MHz crystal (safe timing on Artix-7).
 //----------------------------------------------------------------------------
-//  Author : (your name)
+//  Author : Dennis Du
 //  Date   : 2025-05-01
 //============================================================================
 `timescale 1ns/1ps
@@ -31,7 +30,7 @@ module tpu_fpga_top
 wire clk = CLK100MHZ;             // use raw crystal for simplicity
 
 reg [2:0] rst_pipe;
-always @(posedge clk) rst_pipe <= {rst_pipe[1:0], BTNC};
+always @(posedge clk) rst_pipe <= {rst_pipe[1:0], ~BTNC};
 wire rst_n = rst_pipe[2];          // de-asserted when button released
 
 /* -------------------------------------------------------------------------
@@ -89,7 +88,7 @@ always @(posedge clk or negedge rst_n) begin
         case (state)
         // ---------- LOAD A -------------------------------------------------
         S_LOAD_A: begin
-            instr <= {2'b10, 1'b0, row, col, A_ROM[{row,col}]};
+            instr <= {2'b10, 2'b00, row, col, A_ROM[{row,col}]};
             if (col == 2'd3) begin
                 col <= 0;
                 if (row == 2'd3) begin
@@ -100,7 +99,7 @@ always @(posedge clk or negedge rst_n) begin
         end
         // ---------- LOAD B -------------------------------------------------
         S_LOAD_B: begin
-            instr <= {2'b10, 1'b1, row, col, B_ROM[{row,col}]};
+            instr <= {2'b10, 2'b10, row, col, B_ROM[{row,col}]};
             if (col == 2'd3) begin
                 col <= 0;
                 if (row == 2'd3) begin
@@ -111,7 +110,7 @@ always @(posedge clk or negedge rst_n) begin
         end
         // ---------- RUN for 10 cycles -------------------------------------
         S_RUN: begin
-            instr   <= {2'b01, 1'b0, 2'b00, 2'b00, 8'h00};
+            instr   <= {2'b01, 2'b00, 2'b00, 2'b00, 8'h00};
             run_ctr <= run_ctr + 1'b1;
             if (run_ctr == 4'd10) begin
                 run_ctr <= 0;
@@ -120,7 +119,7 @@ always @(posedge clk or negedge rst_n) begin
         end
         // ---------- STORE all 16 results ----------------------------------
         S_STORE: begin
-            instr <= {2'b11, 1'b0, row, col, 8'h00};
+            instr <= {2'b11, 2'b00, row, col, 8'h00};
             C_buf[{row,col}] <= result;
             if (col == 2'd3) begin
                 col <= 0;
@@ -145,7 +144,7 @@ always @(posedge clk) begin
 end
 wire next_byte = btn0 & ~btn1;   // rising edge pulse
 
-reg [4:0] view_idx;              // 0-15 (needs 5 bits)
+reg [3:0] view_idx;              // 0-15 (needs 5 bits)
 always @(posedge clk or negedge rst_n) begin
     if (!rst_n) view_idx <= 5'd0;
     else if (state == S_DONE && next_byte) view_idx <= view_idx + 1'b1;
