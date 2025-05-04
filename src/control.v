@@ -28,7 +28,6 @@ module control (
 );
 
     reg [3:0] counter;
-    // reg status;
     
     // Instruction decoding
     wire [1:0] opcode = instruction[15:14];
