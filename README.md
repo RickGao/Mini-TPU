@@ -18,7 +18,7 @@ The Mini-TPU is designed for **educational** and **exploratory** purposes. Despi
 - An **output-stationary dataflow**
 - Custom instruction set (`LOAD`, `RUN`, `STORE`)
 - **On-chip dual memory banks** for activations and weights
-- A lightweight **control FSM**
+- A lightweight **control**
 
 ---
 

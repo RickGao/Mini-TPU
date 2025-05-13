@@ -1,33 +1,49 @@
-<!---
+# 🧠 Mini-TPU: A Tiny Tapeout-Based Systolic Array Accelerator
 
-This file is used to generate your project datasheet. Please fill in the information below and delete any unused
-sections.
+![mini-tpu-diagram](./mini_tpu_block.png)
 
-You can also include images in this folder and reference them in the markdown. Each image must be less than
-512 kb in size, and the combined size of all images must be less than 1 MB.
--->
+This project implements a **Mini Tensor Processing Unit (Mini-TPU)** on the **Tiny Tapeout** open-source ASIC platform. It features a compact 4×4 **systolic array** optimized for efficient matrix multiplication, making it ideal for **resource-constrained AI inference** tasks.
 
-## How it works
+✨ Built using **Tiny Tapeout** and **Skywater 130nm PDK**  
+🎯 Educational, efficient, and open-source
 
-This is a Mini TPU, an ASIC that aim to accelerate AI workload
+---
 
-The core architecture is a Systolic Array
+## 🔍 How it Works
 
-We have implement FPGA version of this project, use the FPGA top.
+The Mini-TPU is structured around a **weight-stationary systolic array** for accelerating matrix multiplication tasks.
 
+Key components:
+- **4×4 Processing Element (PE) array** for 8-bit MAC operations
+- **Dual-port on-chip memory** for activations (Memory A) and weights (Memory B)
+- **Control Unit** to execute custom instructions and orchestrate computation
+- **Output-stationary dataflow** with pipelined MAC accumulation
 
+Once data is loaded into the memory banks, the TPU executes the multiplication by propagating inputs through the systolic array and accumulating results in place.
 
-## How to test
+---
 
-## Instruction Format
+## 🔧 Instruction Format
 
-| Instruction   | Format                          | Description |
-|--------------|--------------------------------|-------------|
-| `LOAD m, r, c, x` | `10m0 rrcc xxxxxxxx` | Load data from memory `m` (0=MemoryA, 1=MemoryB) into `row r`, `column c` |
-| `STORE r, c` | `1100 rrcc 00000000` | Store data from `row r`, `column c` |
-| `RUN` | `0100 0000 00000000` | Run the array computation |
+The Mini-TPU supports a minimal 16-bit instruction set for memory access and computation:
 
+| Instruction   | Format (Binary)               | Description |
+|---------------|-------------------------------|-------------|
+| `LOAD m, r, c, x` | `10m0 rrcc xxxxxxxx`        | Load 8-bit data `x` into memory `m` (0 = A, 1 = B) at row `r`, column `c` |
+| `STORE r, c`      | `1100 rrcc 00000000`        | Store result from array row `r`, column `c` |
+| `RUN`             | `0100 0000 00000000`        | Trigger systolic array to compute for 12 cycles |
 
-## External hardware
+This simple ISA allows deterministic control over all TPU behavior, suitable for small-scale AI inference use cases.
 
-FPGA Board with button/switch
+---
+
+## 🧪 How to Test
+
+### 🖥️ Simulation
+
+- Simulate the RTL using `cocotb` or `SystemVerilog` testbenches
+- Use included Python reference model for golden comparisons
+- Testbench components:
+  - Driver: sends LOAD, RUN, STORE sequences
+  - Monitor: samples outputs
+  - Scoreboard: compares with expected values
